@@ -249,3 +249,10 @@ body.has-cartbar{padding-bottom:88px}
 @media (min-width:601px) and (max-width:900px){
   .gal{max-width:520px;margin-left:auto;margin-right:auto;width:100%}
 }
+
+/* фирменные цвета Telegram / WhatsApp */
+.brand-telegram{color:#27A7E7}
+.brand-whatsapp{color:#25D366}
+.chip svg.brand-telegram,.chip svg.brand-whatsapp{width:15px;height:15px}
+.method.on .mi svg,.mm.on .mi svg{color:var(--black)}
+.btn-ghost svg.brand-telegram,.btn-ghost svg.brand-whatsapp{width:18px;height:18px}
