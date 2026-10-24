@@ -285,3 +285,36 @@ body.has-cartbar{padding-bottom:88px}
   .hero-art{height:300px;gap:8px}
   .arch span{font-size:8.5px;bottom:10px;letter-spacing:.14em}
 }
+
+/* ---------- liquid glass ----------
+   Полупрозрачные поверхности с размытием фона, бликами по кромке и световым пятном, которое следует за курсором
+   (--mx/--my выставляет core.js). Золотые кнопки и фото не затрагиваются. */
+:root{--lg-bg:linear-gradient(135deg,rgba(255,255,255,.11) 0%,rgba(255,255,255,.035) 42%,rgba(255,255,255,.075) 100%);--lg-edge:rgba(255,255,255,.17)}
+.hdr.solid,.toast,.cartbar,.bar,.buybar,.fpanel,.panel,.chip,.btn-ghost,.c-tag,.arch span,.sel,.input.search-glass{
+  background-image:var(--lg-bg);
+  -webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.26),inset 0 -1px 0 rgba(255,255,255,.05),inset 0 0 22px rgba(255,255,255,.035),0 14px 34px -16px rgba(0,0,0,.65);
+}
+.hdr.solid{background-color:rgba(12,11,10,.52);border-bottom-color:var(--lg-edge)}
+.toast,.cartbar,.bar,.buybar,.fpanel{background-color:rgba(24,22,19,.58);border-color:var(--lg-edge)}
+.panel{background-color:rgba(255,255,255,.025);border-color:rgba(255,255,255,.1)}
+.chip,.btn-ghost{background-color:rgba(255,255,255,.03);border-color:rgba(255,255,255,.2)}
+.chip.on{background-image:linear-gradient(135deg,rgba(198,161,91,.30),rgba(198,161,91,.10));border-color:var(--gold)}
+.c-tag{background-color:rgba(8,8,8,.4);border-color:rgba(255,255,255,.2)}
+.arch span{left:50%;right:auto;transform:translateX(-50%);bottom:14px;padding:7px 12px;border-radius:999px;background-color:rgba(8,8,8,.35);border:1px solid rgba(255,255,255,.2);white-space:nowrap}
+.sel{background-color:rgba(255,255,255,.03)}
+.btn-ghost:hover,.chip:hover{background-color:rgba(255,255,255,.08)}
+
+/* блик под курсором */
+.hdr.solid,.toast,.cartbar,.panel,.chip,.btn-ghost,.c-tag{position:relative}
+.hdr.solid{position:sticky}
+.toast::before,.cartbar::before,.panel::before,.chip::before,.btn-ghost::before,.hdr.solid::before{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .35s;
+  background:radial-gradient(140px circle at var(--mx,50%) var(--my,0%),rgba(255,255,255,.20),rgba(255,255,255,0) 65%);mix-blend-mode:soft-light}
+.toast:hover::before,.cartbar:hover::before,.panel:hover::before,.chip:hover::before,.btn-ghost:hover::before,.hdr.solid:hover::before{opacity:1}
+.cartbar,.toast{overflow:hidden}
+.toast-dock .toast{position:relative}
+@media (prefers-reduced-transparency:reduce){
+  .hdr.solid,.toast,.cartbar,.bar,.buybar,.fpanel,.panel,.chip,.btn-ghost,.c-tag,.arch span,.sel{-webkit-backdrop-filter:none;backdrop-filter:none}
+  .hdr.solid{background-color:rgba(8,8,8,.96)}.toast,.cartbar,.bar,.buybar,.fpanel{background-color:#1B1A18}
+}

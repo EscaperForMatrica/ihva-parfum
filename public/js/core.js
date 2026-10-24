@@ -230,6 +230,15 @@ function unmarkAdded(b) {
 
 // ---------- шапка, меню ----------
 export function initChrome() {
+  // liquid glass: световое пятно следует за курсором
+  document.addEventListener('pointermove', e => {
+    const el = e.target.closest?.('.hdr, .toast, .cartbar, .panel, .chip, .btn-ghost');
+    if (!el) return;
+    const b = el.getBoundingClientRect();
+    el.style.setProperty('--mx', (e.clientX - b.left) + 'px');
+    el.style.setProperty('--my', (e.clientY - b.top) + 'px');
+  }, { passive: true });
+
   const badge = $('#cart-badge'), link = $('#cart-link');
   let prev = cart.count();
   const paint = () => {
