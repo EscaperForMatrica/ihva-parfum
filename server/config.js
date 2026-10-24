@@ -17,6 +17,8 @@ export function loadConfig(env = process.env) {
       timeoutMs: num(env.TELEGRAM_TIMEOUT_MS, 8000)
     },
     publicTelegramUrl: /^https:\/\/(t\.me|telegram\.me)\//i.test(env.PUBLIC_TELEGRAM_URL || '') ? env.PUBLIC_TELEGRAM_URL.trim() : '',
+    adminPassword: env.ADMIN_PASSWORD || '',
+    uploadsDir: env.UPLOADS_DIR || '',
     siteUrl: (env.SITE_URL || '').replace(/\/+$/, ''),
     rateLimit: {
       ipMax: num(env.RATE_LIMIT_IP_MAX, 10),          // заявок с одного IP

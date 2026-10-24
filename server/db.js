@@ -27,5 +27,7 @@ export function openDb(path) {
     );
     CREATE INDEX IF NOT EXISTS orders_tg_status ON orders (tg_status);
   `);
+  // миграция: статус обработки заявки менеджером
+  if (!db.prepare('PRAGMA table_info(orders)').all().some(c => c.name === 'status')) db.exec("ALTER TABLE orders ADD COLUMN status TEXT NOT NULL DEFAULT 'new'");
   return db;
 }

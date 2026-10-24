@@ -3,11 +3,13 @@ import { readFile, stat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadCatalog } from './products.js';
+import { createCatalog } from './catalog.js';
 import { openDb } from './db.js';
 import { createLimiter } from './ratelimit.js';
 import { createOrderService } from './orders.js';
 import { telegramConfigured } from './config.js';
+import { createAdmin } from './admin.js';
+import { dirname, resolve } from 'node:path';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PUBLIC = join(ROOT, 'public');
@@ -31,13 +33,15 @@ const SECURITY_HEADERS = {
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 export function createApp({ config, db: dbOverride, send } = {}) {
-  const catalog = loadCatalog();
   const db = dbOverride || openDb(config.databasePath);
+  const catalog = createCatalog(db);
   const limiters = {
     ip: createLimiter({ max: config.rateLimit.ipMax, windowMs: config.rateLimit.ipWindowMs }),
     phone: createLimiter({ max: config.rateLimit.phoneMax, windowMs: config.rateLimit.phoneWindowMs })
   };
   const orders = createOrderService({ db, config, catalog, limiters, send });
+  const uploadsDir = resolve(config.uploadsDir || join(dirname(config.databasePath === ':memory:' ? './storage/x' : config.databasePath), 'uploads'));
+  const admin = createAdmin({ config, db, catalog, uploadsDir, send });
   const publicSite = { ...catalog.site, telegramUrl: config.publicTelegramUrl };
 
   // ---------- шаблоны страниц ----------
@@ -76,12 +80,12 @@ export function createApp({ config, db: dbOverride, send } = {}) {
   }
 
   // ---------- статика ----------
-  async function serveStatic(req, res, urlPath) {
+  async function serveStatic(req, res, urlPath, root = PUBLIC) {
     let rel;
     try { rel = normalize(decodeURIComponent(urlPath)); } catch { return false; }
     if (rel.includes('\0') || rel.split(sep).some(s => s.startsWith('.'))) return false;
-    const file = join(PUBLIC, rel);
-    if (!file.startsWith(PUBLIC + sep)) return false;
+    const file = join(root, rel);
+    if (!file.startsWith(root + sep)) return false;
     let st;
     try { st = await stat(file); } catch { return false; }
     if (!st.isFile()) return false;
@@ -126,6 +130,15 @@ export function createApp({ config, db: dbOverride, send } = {}) {
     });
   }
 
+  function readRaw(req, limit) {
+    return new Promise((resolve_, reject) => {
+      let size = 0; const chunks = []; let over = false;
+      req.on('data', c => { if (over) return; size += c.length; if (size > limit) { over = true; chunks.length = 0; reject(Object.assign(new Error('too large'), { status: 413 })); return; } chunks.push(c); });
+      req.on('end', () => { if (!over) resolve_(Buffer.concat(chunks)); });
+      req.on('error', reject);
+    });
+  }
+
   // ---------- маршруты ----------
   async function handle(req, res) {
     const url = new URL(req.url, 'http://localhost');
@@ -151,6 +164,16 @@ export function createApp({ config, db: dbOverride, send } = {}) {
         return send_(res, 500, { ok: false, code: 'server_error', message: 'Внутренняя ошибка. Ничего не потеряно — попробуйте ещё раз через минуту.' });
       }
     }
+    if (path.startsWith('/api/admin/')) {
+      try {
+        const r = await admin.handle(req, path, { json: () => readJson(req), raw: n => readRaw(req, n), ip: clientIp(req) });
+        return send_(res, r[0], r[1], { 'x-robots-tag': 'noindex', ...(r[2] || {}) });
+      } catch (e) {
+        if (e.status) { if (e.status === 413) res.on('finish', () => req.destroy()); return send_(res, e.status, { ok: false, message: e.status === 413 ? 'Файл слишком большой' : 'Некорректный запрос' }, e.status === 413 ? { connection: 'close' } : {}); }
+        console.error('[admin] unexpected', e);
+        return send_(res, 500, { ok: false, message: 'Внутренняя ошибка' });
+      }
+    }
     if (path.startsWith('/api/')) return send_(res, 404, { ok: false, code: 'not_found' });
 
     if (req.method !== 'GET' && req.method !== 'HEAD') return send_(res, 405, 'Method Not Allowed', { allow: 'GET, HEAD' });
@@ -162,6 +185,11 @@ export function createApp({ config, db: dbOverride, send } = {}) {
       '/cart': ['cart', 'cart', 'Корзина — IHVA PARFUM'],
       '/checkout': ['checkout', 'checkout', 'Оформление заказа — IHVA PARFUM']
     };
+    if (path === '/admin' || path === '/admin/') {
+      const html = await readFile(join(PAGES, 'admin.html'), 'utf8');
+      return send_(res, 200, html, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
+    }
+    if (path.startsWith('/uploads/') && await serveStatic(req, res, path.slice('/uploads'.length), uploadsDir)) return;
     const clean = path.length > 1 ? path.replace(/\/+$/, '') : path;
     if (pages[clean]) {
       const [name, active, title] = pages[clean];

@@ -1,14 +1,3 @@
-import { readFileSync } from 'node:fs';
-
-const DATA = new URL('../data/', import.meta.url);
-
-export function loadCatalog() {
-  const products = JSON.parse(readFileSync(new URL('products.json', DATA), 'utf8'));
-  const site = JSON.parse(readFileSync(new URL('site.json', DATA), 'utf8'));
-  const byId = new Map(products.map(p => [p.id, p]));
-  return { products, site, byId };
-}
-
 export const MAX_QTY = 10;
 export const MAX_LINES = 30;
 
