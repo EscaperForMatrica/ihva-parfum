@@ -27,7 +27,20 @@ export function createCatalog(db) {
     db.exec('COMMIT');
   }
 
+  db.exec('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
   const catalog = { site, products: [], byId: new Map() };
+  /** Форматы флаконов (3–50 мл): подпись, подсказка и фото. Правятся в админке, по умолчанию — из data/site.json. */
+  catalog.formats = () => {
+    const saved = db.prepare("SELECT value FROM settings WHERE key = 'formats'").get();
+    const over = saved ? JSON.parse(saved.value) : {};
+    return site.formats.map(f => ({ ...f, image: `/images/formats/${f.vol}.jpg`, ...(over[f.vol] || {}) }));
+  };
+  catalog.setFormat = (vol, patch) => {
+    const saved = db.prepare("SELECT value FROM settings WHERE key = 'formats'").get();
+    const over = saved ? JSON.parse(saved.value) : {};
+    over[vol] = { ...(over[vol] || {}), ...patch };
+    db.prepare("INSERT INTO settings (key, value) VALUES ('formats', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify(over));
+  };
   const rows = () => db.prepare('SELECT data, hidden FROM products ORDER BY position, id').all().map(r => ({ ...JSON.parse(r.data), hidden: Boolean(r.hidden) }));
 
   catalog.refresh = () => {
@@ -93,4 +106,13 @@ const TR = { а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 
 export function slugify(s) {
   const t = String(s).toLowerCase().split('').map(ch => TR[ch] ?? ch).join('').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
   return t.length >= 2 ? t : 'item';
+}
+
+/** Проверка формата флакона из админки. */
+export function validateFormat(body, current) {
+  const e = {}, v = {};
+  v.caption = str(body.caption, 30); if (!v.caption) e.caption = 'Укажите подпись';
+  v.hint = str(body.hint, 60);
+  v.image = typeof body.image === 'string' && /^\/(images|uploads)\/[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/.test(body.image) ? body.image : current.image;
+  return { ok: !Object.keys(e).length, errors: e, value: v };
 }

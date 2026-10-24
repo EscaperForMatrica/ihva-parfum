@@ -168,3 +168,17 @@ test('страница /admin отдаётся с noindex и без кэша', a
   assert.match(r.headers.get('x-robots-tag'), /noindex/);
   assert.match(await r.text(), /\/js\/admin\.js/);
 });
+
+test('форматы флаконов: правка подписи/фото видна на витрине; небезопасный путь отбрасывается', async () => {
+  await login();
+  const before = await (await call('formats')).json();
+  assert.equal(before.length, 6);
+  assert.equal(before[0].image, '/images/formats/3.jpg');
+  assert.equal((await call('formats/5', { method: 'PUT', body: { caption: '', hint: '' } })).status, 400);
+  assert.equal((await call('formats/5', { method: 'PUT', body: { caption: 'Новая подпись', hint: 'Подсказка', image: 'javascript:1' } })).status, 200);
+  const site = await (await fetch(`${base}/api/site`)).json();
+  const f5 = site.formats.find(f => f.vol === 5);
+  assert.deepEqual([f5.caption, f5.hint, f5.image], ['Новая подпись', 'Подсказка', '/images/formats/5.jpg']);
+  assert.equal((await call('formats/7', { method: 'PUT', body: { caption: 'x' } })).status, 404);
+  assert.match(await (await fetch(base + '/')).text(), /Новая подпись/);
+});

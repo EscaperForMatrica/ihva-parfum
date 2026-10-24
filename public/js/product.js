@@ -107,7 +107,7 @@ function paint() {
   const main = $('#main-img');
   const gallery = [{ src: imgOf(p), alt: `Флакон ${p.brand} ${p.name}` }];
   const f = (site.formats || []).find(x => x.vol === state.vol);
-  if (f) gallery.push({ src: `/images/formats/${f.vol}.jpg`, alt: `Формат ${f.vol} мл` });
+  if (f) gallery.push({ src: `${f.image}`, alt: `Формат ${f.vol} мл` });
   if (state.img >= gallery.length) state.img = 0;
   if (main.getAttribute('src') !== gallery[state.img].src) {
     main.classList.remove('fade-img'); void main.offsetWidth; main.classList.add('fade-img');

@@ -9,7 +9,7 @@ const VOLS = [3, 5, 6, 10, 30, 50];
 const LADDER = { 3: 1, 5: 1.6, 6: 1.8, 10: 2.8, 30: 7.5, 50: 11.6 };
 const PLACEHOLDER = '/images/placeholder.svg';
 
-const st = { tab: 'products', products: [], orders: [], q: '', editing: null };
+const st = { tab: 'products', products: [], orders: [], formats: [], q: '', editing: null };
 
 async function api(path, { method = 'GET', body, raw } = {}) {
   const res = await fetch('/api/admin/' + path, {
@@ -25,6 +25,17 @@ async function api(path, { method = 'GET', body, raw } = {}) {
 const note = (title, text, kind = 'ok') => toast({ kind, title, text, ttl: 3000 });
 const minPrice = p => { const v = p.variants.filter(x => x.available); return v.length ? Math.min(...v.map(x => x.price)) : null; };
 const imgOf = p => p.image || PLACEHOLDER;
+
+/** Уменьшает фото до 1000 px в браузере и загружает на сервер. Возвращает путь вида /uploads/... */
+async function uploadImage(file) {
+  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Нужна картинка JPG, PNG или WebP');
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 1000 / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+  cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.9));
+  return (await api('upload', { method: 'POST', raw: { type: 'image/jpeg', data: blob } })).path;
+}
 
 // ---------- вход ----------
 function renderLogin(msg = '') {
@@ -46,6 +57,7 @@ function shell(inner) {
   app.innerHTML = `<div class="adm-top"><div class="adm-top-in">
 <a class="logo" href="/admin"><b style="font-size:20px">IHVA</b><i style="font-size:7px">PARFUM</i></a>
 <nav class="adm-tabs"><button class="adm-tab ${st.tab === 'products' ? 'on' : ''}" data-tab="products">Товары</button>
+<button class="adm-tab ${st.tab === 'formats' ? 'on' : ''}" data-tab="formats">Форматы</button>
 <button class="adm-tab ${st.tab === 'orders' ? 'on' : ''}" data-tab="orders">Заявки${fresh ? `<span class="n">${fresh}</span>` : ''}</button></nav>
 <a class="small" href="/" target="_blank" rel="noopener">Открыть сайт ↗</a><button class="btn-ghost sm" id="logout">Выйти</button></div></div>
 <div class="adm-wrap">${inner}</div>`;
@@ -159,15 +171,8 @@ function openEditor(p) {
 
   // фото: уменьшаем в браузере до 1000 px и грузим на сервер
   async function upload(file) {
-    if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) return note('Нужна картинка JPG, PNG или WebP', '', 'bad');
     try {
-      const bmp = await createImageBitmap(file);
-      const k = Math.min(1, 1000 / Math.max(bmp.width, bmp.height));
-      const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
-      cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
-      const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.9));
-      const r = await api('upload', { method: 'POST', raw: { type: 'image/jpeg', data: blob } });
-      d.image = r.path; $('#ph-img', el).src = r.path;
+      d.image = await uploadImage(file); $('#ph-img', el).src = d.image;
       note('Фото загружено', 'Не забудьте нажать «Сохранить»');
     } catch (err) { if (err.message !== 'unauthorized') note('Не удалось загрузить фото', err.message, 'bad'); }
   }
@@ -235,11 +240,35 @@ ${o.comment ? `<div class="hint">Комментарий: ${esc(o.comment)}</div>
   });
 }
 
-function render() { (st.tab === 'orders' ? renderOrders : renderProducts)(); }
-async function load() { [st.products, st.orders] = await Promise.all([api('products'), api('orders')]); }
+// ---------- форматы флаконов ----------
+function renderFormats() {
+  shell(`<div class="adm-head"><div><div class="eyebrow">Главная и страница аромата</div><h1 class="display">Форматы</h1></div></div>
+<p class="hint" style="margin:-8px 0 20px;max-width:620px">Флаконы 3–50 мл показываются на главной и в галерее аромата. Здесь меняются фото и подписи. Цена и наличие каждого объёма задаются в карточке товара.</p>
+<div class="fgrid-a">${st.formats.map(f => `<form class="fcard" data-vol="${f.vol}" novalidate>
+<label class="fimg" title="Заменить фото"><img src="${esc(f.image)}" alt="${esc(f.alt)}"><input type="file" accept="image/jpeg,image/png,image/webp" hidden><span>Заменить фото</span></label>
+<b class="fvol">${f.vol} мл</b>
+<div class="field"><label class="label">Подпись на главной</label><input class="input" name="caption" value="${esc(f.caption)}" maxlength="30"></div>
+<div class="field"><label class="label">Подсказка в карточке аромата</label><input class="input" name="hint" value="${esc(f.hint)}" maxlength="60" placeholder="Например: Стеклянный флакон"></div>
+<button class="btn sm" type="submit">Сохранить</button></form>`).join('')}</div>`);
+  $$('.fcard').forEach(card => {
+    const f = st.formats.find(x => x.vol === Number(card.dataset.vol)); let image = f.image;
+    card.querySelector('input[type=file]').addEventListener('change', async e => {
+      try { image = await uploadImage(e.target.files[0]); card.querySelector('img').src = image; note('Фото загружено', 'Нажмите «Сохранить»'); }
+      catch (err) { if (err.message !== 'unauthorized') note('Не удалось загрузить фото', err.message, 'bad'); }
+    });
+    card.addEventListener('submit', async e => {
+      e.preventDefault();
+      try { await api('formats/' + f.vol, { method: 'PUT', body: { caption: card.caption.value, hint: card.hint.value, image } }); note('Сохранено', `${f.vol} мл`); await load(); }
+      catch (err) { if (err.message !== 'unauthorized') note('Не сохранено', err.message, 'bad'); }
+    });
+  });
+}
+
+function render() { ({ orders: renderOrders, formats: renderFormats }[st.tab] || renderProducts)(); }
+async function load() { [st.products, st.orders, st.formats] = await Promise.all([api('products'), api('orders'), api('formats')]); }
 async function boot() {
   try { await api('me'); } catch (e) { if (e.status === 503) { app.innerHTML = `<div class="login"><h1 class="display d3">Админка выключена</h1><p class="body">Задайте переменную <code>ADMIN_PASSWORD</code> на сервере и перезапустите приложение.</p></div>`; } else if (e.message !== 'unauthorized') renderLogin(); return; }
   await load(); render();
 }
 boot();
-setInterval(() => { if (document.hidden || st.editing || $('.ed')) return; load().then(() => { if (st.tab === 'orders') renderOrders(); else if (!$('#aq') || document.activeElement !== $('#aq')) renderProducts(); }).catch(() => {}); }, 60000);
+setInterval(() => { if (document.hidden || st.editing || $('.ed')) return; load().then(() => { if (st.tab === 'orders') renderOrders(); else if (st.tab === 'products' && (!$('#aq') || document.activeElement !== $('#aq'))) renderProducts(); }).catch(() => {}); }, 60000);

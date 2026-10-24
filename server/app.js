@@ -42,7 +42,7 @@ export function createApp({ config, db: dbOverride, send } = {}) {
   const orders = createOrderService({ db, config, catalog, limiters, send });
   const uploadsDir = resolve(config.uploadsDir || join(dirname(config.databasePath === ':memory:' ? './storage/x' : config.databasePath), 'uploads'));
   const admin = createAdmin({ config, db, catalog, uploadsDir, send });
-  const publicSite = { ...catalog.site, telegramUrl: config.publicTelegramUrl };
+  const getSite = () => ({ ...catalog.site, formats: catalog.formats(), telegramUrl: config.publicTelegramUrl });
 
   // ---------- шаблоны страниц ----------
   const partialCache = new Map();
@@ -60,7 +60,7 @@ export function createApp({ config, db: dbOverride, send } = {}) {
     const site = catalog.site;
     const vars = {
       '<!--@header-->': header, '<!--@footer-->': footer, '<!--@menu-->': menu,
-      '{{site_json}}': JSON.stringify(publicSite).replace(/</g, '\\u003c'),
+      '{{site_json}}': JSON.stringify(getSite()).replace(/</g, '\\u003c'),
       '{{hdr}}': active === 'home' ? '' : 'solid',
       '{{foot}}': active === 'home' ? '' : 'min',
       '{{title}}': esc(title || 'IHVA PARFUM — парфюмерный бутик'),
@@ -146,7 +146,7 @@ export function createApp({ config, db: dbOverride, send } = {}) {
 
     if (path === '/api/health') return send_(res, 200, { ok: true, telegram: telegramConfigured(config) });
     if (path === '/api/products' && req.method === 'GET') return send_(res, 200, catalog.products, { 'cache-control': 'no-cache' });
-    if (path === '/api/site' && req.method === 'GET') return send_(res, 200, publicSite, { 'cache-control': 'no-cache' });
+    if (path === '/api/site' && req.method === 'GET') return send_(res, 200, getSite(), { 'cache-control': 'no-cache' });
 
     if (path === '/api/orders') {
       if (req.method !== 'POST') return send_(res, 405, { ok: false, code: 'method_not_allowed' }, { allow: 'POST' });

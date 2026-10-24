@@ -1,7 +1,7 @@
 import { createHmac, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { validateProduct, slugify } from './catalog.js';
+import { validateProduct, validateFormat, slugify, VOLS } from './catalog.js';
 import { createLimiter } from './ratelimit.js';
 import { formatOrderMessage, sendMessage } from './telegram.js';
 
@@ -90,6 +90,17 @@ export function createAdmin({ config, db, catalog, uploadsDir, send = sendMessag
         return [200, { ok: true }];
       }
       if (req.method === 'DELETE') { catalog.remove(id); return [200, { ok: true }]; }
+    }
+
+    if (route === 'formats' && req.method === 'GET') return [200, catalog.formats()];
+    const fm = route.match(/^formats\/(\d+)$/);
+    if (fm && req.method === 'PUT') {
+      const vol = Number(fm[1]), cur = catalog.formats().find(f => f.vol === vol);
+      if (!cur) return [404, { ok: false, message: 'Такого формата нет' }];
+      const parsed = validateFormat(await json(), cur);
+      if (!parsed.ok) return [400, { ok: false, fields: parsed.errors, message: 'Проверьте поля' }];
+      catalog.setFormat(vol, parsed.value);
+      return [200, { ok: true }];
     }
 
     if (route === 'upload' && req.method === 'POST') {
