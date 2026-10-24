@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+<meta name="theme-color" content="#080808">
+<meta property="og:title" content="{{title}}"><meta property="og:description" content="{{description}}"><meta property="og:type" content="website">
+{{canonical}}
+<link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/fonts.css">
+<link rel="stylesheet" href="/css/design.css">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body class="pg-cart">
+<a class="skip" href="#main">К содержимому</a>
+<div style="background: #080808; color: #F5F1E8; min-height: 100vh">
+<!--@header-->
+<main id="main">
+<div class="wrap" style="padding-top: 40px; padding-bottom: 120px" id="cart-root">
+<nav class="crumbs" aria-label="Хлебные крошки"><a href="/">Главная</a><i></i><span style="color: #CFCAC0">Корзина</span></nav>
+<div style="display: flex; align-items: baseline; gap: 18px; margin: 28px 0 40px; flex-wrap: wrap">
+<h1 class="display" style="font-size: clamp(44px, 4.4vw, 64px)">Корзина</h1>
+<span class="small" id="cart-count" style="font-size: 15px" hidden></span>
+</div>
+<div id="cart-body" aria-live="polite"><div class="small" style="padding: 40px 0">Загружаем…</div></div>
+</div>
+</main>
+<div class="bar" id="cart-bar" hidden></div>
+<!--@footer-->
+</div>
+<!--@menu-->
+<script type="module" src="/js/cart.js"></script>
+</body>
+</html>

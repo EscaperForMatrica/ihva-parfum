@@ -1,0 +1,494 @@
+[
+  {
+    "id": "xerjoff",
+    "brand": "Xerjoff",
+    "name": "Purple Accento",
+    "type": "Eau de Parfum",
+    "gender": "Унисекс",
+    "cats": [
+      "Женская",
+      "Унисекс",
+      "Нишевые"
+    ],
+    "family": "Цветочные",
+    "familyNote": "Цветочно-фруктовый",
+    "popularity": 1,
+    "tag": "Нишевый",
+    "image": "/images/products/xerjoff.jpg",
+    "description": "Современный, чувственный и притягательный аромат для тех, кто ценит индивидуальность и стиль. Композиция, полная загадки и шарма.",
+    "notes": {
+      "top": "Бергамот, гиацинт",
+      "heart": "Черника, жасмин самбак",
+      "base": "Мускус, амбра, древесные ноты"
+    },
+    "seasons": {
+      "Весна": 3,
+      "Лето": 2,
+      "Осень": 5,
+      "Зима": 3
+    },
+    "longevity": "до 10 часов",
+    "audience": "Для мужчин и женщин, которые выбирают страсть, уверенность и харизму.",
+    "brandInfo": "Итальянская парфюмерия, известная своими роскошными ингредиентами и уникальными флаконами.",
+    "variants": [
+      {
+        "vol": 3,
+        "price": 990,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 5,
+        "price": 1590,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 6,
+        "price": 1780,
+        "available": false,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 10,
+        "price": 2790,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 30,
+        "price": 7490,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 50,
+        "price": 11490,
+        "available": true,
+        "priceSource": "design"
+      }
+    ]
+  },
+  {
+    "id": "chanel",
+    "brand": "Chanel",
+    "name": "Bleu de Chanel",
+    "type": "Eau de Parfum",
+    "gender": "Мужской",
+    "cats": [
+      "Мужская"
+    ],
+    "family": "Древесные",
+    "familyNote": "Древесный",
+    "popularity": 2,
+    "tag": "Классика",
+    "image": "/images/products/chanel.jpg",
+    "description": "Chanel Bleu de Chanel — в разливе: от пробника 3 мл до большого флакона. Подробности о нотах и стойкости подскажет менеджер.",
+    "notes": null,
+    "seasons": null,
+    "longevity": null,
+    "audience": null,
+    "brandInfo": null,
+    "variants": [
+      {
+        "vol": 3,
+        "price": 790,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 5,
+        "price": 1260,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 6,
+        "price": 1420,
+        "available": false,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 10,
+        "price": 2210,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 30,
+        "price": 5930,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 50,
+        "price": 9160,
+        "available": true,
+        "priceSource": "estimate"
+      }
+    ]
+  },
+  {
+    "id": "mancera",
+    "brand": "Mancera",
+    "name": "Red Tobacco",
+    "type": "Eau de Parfum",
+    "gender": "Унисекс",
+    "cats": [
+      "Женская",
+      "Унисекс",
+      "Нишевые"
+    ],
+    "family": "Восточные",
+    "familyNote": "Восточный",
+    "popularity": 3,
+    "tag": "Нишевый",
+    "image": "/images/products/mancera.jpg",
+    "description": "Mancera Red Tobacco — в разливе: от пробника 3 мл до большого флакона. Подробности о нотах и стойкости подскажет менеджер.",
+    "notes": null,
+    "seasons": null,
+    "longevity": null,
+    "audience": null,
+    "brandInfo": null,
+    "variants": [
+      {
+        "vol": 3,
+        "price": 690,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 5,
+        "price": 1090,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 6,
+        "price": 1240,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 10,
+        "price": 1930,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 30,
+        "price": 5180,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 50,
+        "price": 8000,
+        "available": true,
+        "priceSource": "estimate"
+      }
+    ]
+  },
+  {
+    "id": "dg",
+    "brand": "Dolce & Gabbana",
+    "name": "K by Dolce & Gabbana",
+    "type": "",
+    "gender": "Мужской",
+    "cats": [
+      "Мужская"
+    ],
+    "family": "Цитрусовые",
+    "familyNote": "Цитрусовый",
+    "popularity": 4,
+    "tag": "",
+    "image": null,
+    "description": "Dolce & Gabbana K by Dolce & Gabbana — в разливе: от пробника 3 мл до большого флакона. Подробности о нотах и стойкости подскажет менеджер.",
+    "notes": null,
+    "seasons": null,
+    "longevity": null,
+    "audience": null,
+    "brandInfo": null,
+    "variants": [
+      {
+        "vol": 3,
+        "price": 590,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 5,
+        "price": 940,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 6,
+        "price": 1060,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 10,
+        "price": 1650,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 30,
+        "price": 4430,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 50,
+        "price": 6840,
+        "available": true,
+        "priceSource": "estimate"
+      }
+    ]
+  },
+  {
+    "id": "clive",
+    "brand": "Clive Christian",
+    "name": "XXI Art Deco Amberwood",
+    "type": "Noble Collection",
+    "gender": "Унисекс",
+    "cats": [
+      "Женская",
+      "Унисекс",
+      "Нишевые"
+    ],
+    "family": "Восточные",
+    "familyNote": "Восточный",
+    "popularity": 5,
+    "tag": "Нишевый",
+    "image": "/images/products/clive.jpg",
+    "description": "Clive Christian XXI Art Deco Amberwood — в разливе: от пробника 3 мл до большого флакона. Подробности о нотах и стойкости подскажет менеджер.",
+    "notes": null,
+    "seasons": null,
+    "longevity": null,
+    "audience": null,
+    "brandInfo": null,
+    "variants": [
+      {
+        "vol": 3,
+        "price": 1490,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 5,
+        "price": 2380,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 6,
+        "price": 2680,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 10,
+        "price": 4170,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 30,
+        "price": 11180,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 50,
+        "price": 17280,
+        "available": false,
+        "priceSource": "estimate"
+      }
+    ]
+  },
+  {
+    "id": "amber",
+    "brand": "French Avenue",
+    "name": "Amber Empire",
+    "type": "",
+    "gender": "Унисекс",
+    "cats": [
+      "Женская",
+      "Унисекс",
+      "Нишевые"
+    ],
+    "family": "Восточные",
+    "familyNote": "Восточный",
+    "popularity": 6,
+    "tag": "Нишевый",
+    "image": "/images/products/amber.jpg",
+    "description": "French Avenue Amber Empire — в разливе: от пробника 3 мл до большого флакона. Подробности о нотах и стойкости подскажет менеджер.",
+    "notes": null,
+    "seasons": null,
+    "longevity": null,
+    "audience": null,
+    "brandInfo": null,
+    "variants": [
+      {
+        "vol": 3,
+        "price": 490,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 5,
+        "price": 780,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 6,
+        "price": 880,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 10,
+        "price": 1370,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 30,
+        "price": 3680,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 50,
+        "price": 5680,
+        "available": true,
+        "priceSource": "estimate"
+      }
+    ]
+  },
+  {
+    "id": "genyum",
+    "brand": "Genyum",
+    "name": "Painter",
+    "type": "Eau de Parfum",
+    "gender": "Унисекс",
+    "cats": [
+      "Женская",
+      "Унисекс",
+      "Нишевые"
+    ],
+    "family": "Древесные",
+    "familyNote": "Древесный",
+    "popularity": 7,
+    "tag": "Нишевый",
+    "image": "/images/products/genyum.jpg",
+    "description": "Genyum Painter — в разливе: от пробника 3 мл до большого флакона. Подробности о нотах и стойкости подскажет менеджер.",
+    "notes": null,
+    "seasons": null,
+    "longevity": null,
+    "audience": null,
+    "brandInfo": null,
+    "variants": [
+      {
+        "vol": 3,
+        "price": 790,
+        "available": true,
+        "priceSource": "design"
+      },
+      {
+        "vol": 5,
+        "price": 1260,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 6,
+        "price": 1420,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 10,
+        "price": 2210,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 30,
+        "price": 5930,
+        "available": true,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 50,
+        "price": 9160,
+        "available": true,
+        "priceSource": "estimate"
+      }
+    ]
+  },
+  {
+    "id": "hormone",
+    "brand": "Hormone Paris",
+    "name": "Hormone",
+    "type": "",
+    "gender": "Унисекс",
+    "cats": [
+      "Женская",
+      "Унисекс"
+    ],
+    "family": "Древесные",
+    "familyNote": "Древесный",
+    "popularity": 8,
+    "tag": "",
+    "image": null,
+    "description": "Hormone Paris Hormone — в разливе: от пробника 3 мл до большого флакона. Подробности о нотах и стойкости подскажет менеджер.",
+    "notes": null,
+    "seasons": null,
+    "longevity": null,
+    "audience": null,
+    "brandInfo": null,
+    "variants": [
+      {
+        "vol": 3,
+        "price": 890,
+        "available": false,
+        "priceSource": "design"
+      },
+      {
+        "vol": 5,
+        "price": 1420,
+        "available": false,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 6,
+        "price": 1600,
+        "available": false,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 10,
+        "price": 2490,
+        "available": false,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 30,
+        "price": 6680,
+        "available": false,
+        "priceSource": "estimate"
+      },
+      {
+        "vol": 50,
+        "price": 10320,
+        "available": false,
+        "priceSource": "estimate"
+      }
+    ]
+  }
+]

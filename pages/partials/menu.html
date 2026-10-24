@@ -1,0 +1,17 @@
+<div class="menu" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Меню" hidden>
+<div style="height: 60px; padding: 0 6px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center">
+<div><button class="ibtn" type="button" id="menu-close" aria-label="Закрыть меню"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+<span class="logo"><b style="font-size: 21px">IHVA</b><i style="font-size: 7.5px">PARFUM</i></span><div></div>
+</div>
+<div style="padding: 24px 20px 32px; display: flex; flex-direction: column; overflow: auto" class="slide-in">
+<a href="/" class="big">Главная<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#C6A15B" stroke-width="1.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+<a href="/catalog" class="big">Каталог<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#C6A15B" stroke-width="1.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+<a href="/catalog#brands" class="big">Бренды<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#C6A15B" stroke-width="1.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+<a href="/#about" class="big">О магазине<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#C6A15B" stroke-width="1.4" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+<div class="eyebrow muted" style="margin: 32px 0 14px">Категории</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px"><a href="/catalog?cat=Мужская" class="chip">Мужская</a><a href="/catalog?cat=Женская" class="chip">Женская</a><a href="/catalog?cat=Унисекс" class="chip">Унисекс</a><a href="/catalog?cat=Нишевые" class="chip">Нишевые</a></div>
+<div class="eyebrow muted" style="margin: 32px 0 14px">Связаться с менеджером</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px">{{menu_tg}}{{menu_wa}}</div>
+</div>
+</div>
+<script type="application/json" id="site-data">{{site_json}}</script>

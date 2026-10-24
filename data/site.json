@@ -1,0 +1,16 @@
+{
+  "name": "IHVA PARFUM",
+  "phoneDisplay": "8 (928) 807-34-42",
+  "phoneTel": "+79288073442",
+  "whatsapp": "https://wa.me/79288073442",
+  "instagram": "https://instagram.com/ihva_parfum",
+  "instagramHandle": "@ihva_parfum",
+  "formats": [
+    { "vol": 3,  "caption": "Знакомство",     "alt": "Флакон-спрей 3 мл",  "hint": "Стеклянный спрей — познакомиться" },
+    { "vol": 5,  "caption": "В сумочку",      "alt": "Атомайзер 5 мл",     "hint": "Металлический атомайзер" },
+    { "vol": 6,  "caption": "В дорогу",       "alt": "Атомайзер 6 мл",     "hint": "" },
+    { "vol": 10, "caption": "На сезон",       "alt": "Атомайзер 10 мл с гравировкой IHVA parfum", "hint": "Атомайзер с гравировкой" },
+    { "vol": 30, "caption": "Флакон",         "alt": "Стеклянный флакон 30 мл", "hint": "Стеклянный флакон" },
+    { "vol": 50, "caption": "Большой флакон", "alt": "Стеклянный флакон 50 мл", "hint": "Большой флакон" }
+  ]
+}
