@@ -101,3 +101,10 @@ data/      products.json · site.json
 scripts/   orders.mjs · mock-telegram.mjs · gen-products.mjs (однократный генератор products.json)
 test/      api.test.js
 ```
+
+## Боевой сайт на lite-host
+
+Сайт: **https://ihva.taubatour.ru** (cPanel + Phusion Passenger, Node 24 из `/opt/alt`).
+`~/ihva-app` — код и `.env` (только на сервере), `~/ihva-data` — база заявок (выкладка её не трогает),
+`~/ihva.taubatour.ru/.htaccess` — подключение Passenger. Обновление: `DEPLOY_HOST=mars.lite-host.in sh scripts/deploy.sh`.
+После правки `.env` на сервере: `touch ~/ihva-app/tmp/restart.txt`.
