@@ -262,7 +262,7 @@ body.has-cartbar{padding-bottom:88px}
 @media (max-width:600px){.wrap{padding-left:20px;padding-right:20px}.buybar,.bar{padding-left:20px;padding-right:20px}.cartbar{left:16px;right:16px}}
 
 /* ---------- hero: три флакона в арках ---------- */
-.hero-art{position:absolute;right:clamp(20px,5vw,80px);top:112px;bottom:72px;width:min(46%,660px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(10px,1.4vw,20px);align-items:end}
+.hero-art{position:absolute;right:clamp(20px,5vw,80px);top:50%;transform:translateY(-46%);height:min(540px,calc(100% - 200px));width:min(46%,600px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(10px,1.4vw,20px);align-items:end}
 .hero-art::before{content:"";position:absolute;inset:-6% -8%;background:radial-gradient(55% 50% at 50% 55%,rgba(198,161,91,.22),rgba(198,161,91,0) 70%);pointer-events:none}
 .arch{position:relative;display:block;overflow:hidden;border-radius:999px 999px 14px 14px;border:1px solid var(--line2);background:radial-gradient(120% 80% at 50% 30%,#22201C,#0B0B0B);height:78%;transition:border-color .4s var(--ease),transform .6s var(--ease)}
 .arch.a2{height:100%}
@@ -277,7 +277,7 @@ body.has-cartbar{padding-bottom:88px}
   .hero{min-height:0!important;margin-top:-68px!important;background:radial-gradient(70% 40% at 60% 70%,rgba(198,161,91,.16),rgba(8,8,8,0) 70%),#080808!important}
   .hero{display:flex;flex-direction:column}
   .hero-body{padding-top:130px!important;padding-bottom:36px!important;margin-top:0!important}
-  .hero-art{order:2;position:relative;right:auto;top:auto;bottom:auto;width:auto;height:min(78vw,520px);margin:0 clamp(20px,5vw,80px) 8px}
+  .hero-art{order:2;position:relative;right:auto;top:auto;bottom:auto;transform:none;width:auto;height:min(70vw,480px);margin:0 clamp(20px,5vw,80px) 8px}
 }
 @media (max-width:600px){
   .hero{margin-top:-60px!important}
