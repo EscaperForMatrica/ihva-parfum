@@ -87,7 +87,7 @@ npm run orders -- --resend        # отправить их менеджеру �
 - **Фото**: нет у K by Dolce & Gabbana и Hormone Paris (показывается нейтральная заглушка). Положите файл в
   `public/images/products/<id>.jpg` и укажите путь в поле `image`.
 - **Telegram-ссылка магазина** — `PUBLIC_TELEGRAM_URL` (в макете «[ссылка на Telegram]»). Пока пусто — кнопки Telegram скрыты.
-- **Контакты** (WhatsApp, Instagram) — `data/site.json`.
+- **Контакты** (телефон, WhatsApp) — `data/site.json`.
 
 ## Структура
 

@@ -2,7 +2,7 @@ import { $, $$, esc, plural, initChrome, getProducts, bindCards, cardHTML, cart,
 
 initChrome();
 
-const CATS = ['Мужская', 'Женская', 'Унисекс', 'Нишевые'];
+const CATS = ['Мужская', 'Женская', 'Для всех', 'Нишевые'];
 const VOLS = [3, 5, 6, 10, 30, 50];
 const PRICES = ['до 700 ₽', '700–1 000 ₽', 'от 1 000 ₽'];
 const KEYS = ['cats', 'brands', 'vols', 'prices', 'fams'];

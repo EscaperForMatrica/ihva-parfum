@@ -17,7 +17,7 @@ const FAMILY_ADJ = { 'Восточные': 'Восточный', 'Древесн
 const ALL = [3, 5, 6, 10, 30, 50];
 
 const raw = [
-  { id: 'xerjoff', brand: 'Xerjoff', name: 'Purple Accento', type: 'Eau de Parfum', gender: 'Унисекс', cats: ['Женская', 'Унисекс', 'Нишевые'], family: 'Цветочные', familyNote: 'Цветочно-фруктовый', popularity: 1, tag: 'Нишевый',
+  { id: 'xerjoff', brand: 'Xerjoff', name: 'Purple Accento', type: 'Eau de Parfum', gender: 'Для всех', cats: ['Женская', 'Для всех', 'Нишевые'], family: 'Цветочные', familyNote: 'Цветочно-фруктовый', popularity: 1, tag: 'Нишевый',
     description: 'Современный, чувственный и притягательный аромат для тех, кто ценит индивидуальность и стиль. Композиция, полная загадки и шарма.',
     notes: { top: 'Бергамот, гиацинт', heart: 'Черника, жасмин самбак', base: 'Мускус, амбра, древесные ноты' },
     seasons: { 'Весна': 3, 'Лето': 2, 'Осень': 5, 'Зима': 3 }, longevity: 'до 10 часов', audience: 'Для мужчин и женщин, которые выбирают страсть, уверенность и харизму.',
@@ -25,26 +25,26 @@ const raw = [
     variants: ladder(990, [3, 5, 10, 30, 50], { 3: 990, 5: 1590, 10: 2790, 30: 7490, 50: 11490 }) },
   { id: 'chanel', brand: 'Chanel', name: 'Bleu de Chanel', type: 'Eau de Parfum', gender: 'Мужской', cats: ['Мужская'], family: 'Древесные', popularity: 2, tag: 'Классика',
     variants: ladder(790, [3, 5, 10, 30, 50], { 3: 790 }) },
-  { id: 'mancera', brand: 'Mancera', name: 'Red Tobacco', type: 'Eau de Parfum', gender: 'Унисекс', cats: ['Женская', 'Унисекс', 'Нишевые'], family: 'Восточные', popularity: 3, tag: 'Нишевый',
+  { id: 'mancera', brand: 'Mancera', name: 'Red Tobacco', type: 'Eau de Parfum', gender: 'Для всех', cats: ['Женская', 'Для всех', 'Нишевые'], family: 'Восточные', popularity: 3, tag: 'Нишевый',
     variants: ladder(690, ALL, { 3: 690, 5: 1090 }) },
-  { id: 'dg', brand: 'Dolce & Gabbana', name: 'K by Dolce & Gabbana', type: '', gender: 'Мужской', cats: ['Мужская'], family: 'Цитрусовые', popularity: 4, image: null,
+  { id: 'dg', brand: 'Dolce & Gabbana', name: 'K by Dolce & Gabbana', type: '', gender: 'Мужской', cats: ['Мужская'], family: 'Цитрусовые', popularity: 4, image: 'svg',
     variants: ladder(590, ALL, { 3: 590 }) },
-  { id: 'clive', brand: 'Clive Christian', name: 'XXI Art Deco Amberwood', type: 'Noble Collection', gender: 'Унисекс', cats: ['Женская', 'Унисекс', 'Нишевые'], family: 'Восточные', popularity: 5, tag: 'Нишевый',
+  { id: 'clive', brand: 'Clive Christian', name: 'XXI Art Deco Amberwood', type: 'Noble Collection', gender: 'Для всех', cats: ['Женская', 'Для всех', 'Нишевые'], family: 'Восточные', popularity: 5, tag: 'Нишевый',
     variants: ladder(1490, [3, 5, 6, 10, 30], { 3: 1490 }) },
-  { id: 'amber', brand: 'French Avenue', name: 'Amber Empire', type: '', gender: 'Унисекс', cats: ['Женская', 'Унисекс', 'Нишевые'], family: 'Восточные', popularity: 6, tag: 'Нишевый',
+  { id: 'amber', brand: 'French Avenue', name: 'Amber Empire', type: '', gender: 'Для всех', cats: ['Женская', 'Для всех', 'Нишевые'], family: 'Восточные', popularity: 6, tag: 'Нишевый',
     variants: ladder(490, ALL, { 3: 490 }) },
-  { id: 'genyum', brand: 'Genyum', name: 'Painter', type: 'Eau de Parfum', gender: 'Унисекс', cats: ['Женская', 'Унисекс', 'Нишевые'], family: 'Древесные', popularity: 7, tag: 'Нишевый',
+  { id: 'genyum', brand: 'Genyum', name: 'Painter', type: 'Eau de Parfum', gender: 'Для всех', cats: ['Женская', 'Для всех', 'Нишевые'], family: 'Древесные', popularity: 7, tag: 'Нишевый',
     variants: ladder(790, ALL, { 3: 790 }) },
-  { id: 'hormone', brand: 'Hormone Paris', name: 'Hormone', type: '', gender: 'Унисекс', cats: ['Женская', 'Унисекс'], family: 'Древесные', popularity: 8, image: null,
+  { id: 'hormone', brand: 'Hormone Paris', name: 'Hormone', type: '', gender: 'Для всех', cats: ['Женская', 'Для всех'], family: 'Древесные', popularity: 8, image: 'svg',
     variants: ladder(890, [], { 3: 890 }) }
 ];
 
 const products = raw.map(p => {
-  const hasPhoto = p.image !== null;
+  const ext = p.image === 'svg' ? 'svg' : 'jpg';
   return {
     id: p.id, brand: p.brand, name: p.name, type: p.type, gender: p.gender, cats: p.cats,
     family: p.family, familyNote: p.familyNote || FAMILY_ADJ[p.family], popularity: p.popularity, tag: p.tag || '',
-    image: hasPhoto ? `/images/products/${p.id}.jpg` : null,
+    image: `/images/products/${p.id}.${ext}`,
     description: p.description || `${p.brand} ${p.name} — в разливе: от пробника 3 мл до большого флакона. Подробности о нотах и стойкости подскажет менеджер.`,
     notes: p.notes || null, seasons: p.seasons || null, longevity: p.longevity || null,
     audience: p.audience || null, brandInfo: p.brandInfo || null,

@@ -108,7 +108,7 @@ body.lock{overflow:hidden}
   .logo b{font-size:21px}.logo i{font-size:7.5px}
   .hdr .ibtn{width:44px;height:44px}
   .badge{top:5px;right:4px}
-  .wrap{padding-left:16px;padding-right:16px}
+  .wrap{padding-left:20px;padding-right:20px}
 
   /* карточки: две колонки, круглая «+» */
   .btn-add-d{display:none!important}
@@ -139,7 +139,7 @@ body.lock{overflow:hidden}
   .hero-actions .btn{width:100%}
   .hero-actions .lnk{align-self:center}
   .perks{display:none}
-  .perks-m{display:flex;flex-direction:column;gap:10px;margin:28px 0 0;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .perks-m{display:flex;flex-direction:column;gap:10px;margin:28px 20px 0;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
   .perks-m .note-strip{font-size:12.5px}
   .section{padding-top:64px}
   .sec-head{margin-bottom:20px;gap:10px}
@@ -150,7 +150,7 @@ body.lock{overflow:hidden}
   .fmt-m{display:flex}
   .steps{display:none}
   .steps-m{display:block}
-  .hscroll{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 16px;margin:0 -16px;scrollbar-width:none}
+  .hscroll{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 20px;margin:0 -20px;scrollbar-width:none}
   .hscroll::-webkit-scrollbar{display:none}
   .hscroll>*{scroll-snap-align:start;flex:none}
   .about .about-img{max-height:260px;aspect-ratio:auto!important;height:260px}
@@ -182,7 +182,7 @@ body.lock{overflow:hidden}
   body.pg-product .crumbs{display:none}
   body.pg-product main>.wrap{padding-top:0!important}
   .pd{margin-top:0!important;gap:22px}
-  .gal{display:block;position:relative;top:auto;margin:0 -16px}
+  .gal{display:block;position:relative;top:auto;margin:0 -20px}
   .gal .thumbs{display:none}
   .gal-main{aspect-ratio:auto!important;height:470px;border-radius:0!important;border:0!important;background:radial-gradient(120% 80% at 50% 30%,#22201C,#0B0B0B)}
   .gal-main::after{content:"";position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(180deg,rgba(8,8,8,0),#080808)}
@@ -256,3 +256,7 @@ body.has-cartbar{padding-bottom:88px}
 .chip svg.brand-telegram,.chip svg.brand-whatsapp{width:15px;height:15px}
 .method.on .mi svg,.mm.on .mi svg{color:var(--black)}
 .btn-ghost svg.brand-telegram,.btn-ghost svg.brand-whatsapp{width:18px;height:18px}
+
+/* боковые отступы чуть шире, чем в макете */
+.wrap{padding-left:clamp(20px,5vw,80px);padding-right:clamp(20px,5vw,80px)}
+@media (max-width:600px){.wrap{padding-left:20px;padding-right:20px}.buybar,.bar{padding-left:20px;padding-right:20px}.cartbar{left:16px;right:16px}}

@@ -4,10 +4,10 @@
     "brand": "Xerjoff",
     "name": "Purple Accento",
     "type": "Eau de Parfum",
-    "gender": "Унисекс",
+    "gender": "Для всех",
     "cats": [
       "Женская",
-      "Унисекс",
+      "Для всех",
       "Нишевые"
     ],
     "family": "Цветочные",
@@ -133,10 +133,10 @@
     "brand": "Mancera",
     "name": "Red Tobacco",
     "type": "Eau de Parfum",
-    "gender": "Унисекс",
+    "gender": "Для всех",
     "cats": [
       "Женская",
-      "Унисекс",
+      "Для всех",
       "Нишевые"
     ],
     "family": "Восточные",
@@ -202,7 +202,7 @@
     "familyNote": "Цитрусовый",
     "popularity": 4,
     "tag": "",
-    "image": null,
+    "image": "/images/products/dg.svg",
     "description": "Dolce & Gabbana K by Dolce & Gabbana — в разливе: от пробника 3 мл до большого флакона. Подробности о нотах и стойкости подскажет менеджер.",
     "notes": null,
     "seasons": null,
@@ -253,10 +253,10 @@
     "brand": "Clive Christian",
     "name": "XXI Art Deco Amberwood",
     "type": "Noble Collection",
-    "gender": "Унисекс",
+    "gender": "Для всех",
     "cats": [
       "Женская",
-      "Унисекс",
+      "Для всех",
       "Нишевые"
     ],
     "family": "Восточные",
@@ -314,10 +314,10 @@
     "brand": "French Avenue",
     "name": "Amber Empire",
     "type": "",
-    "gender": "Унисекс",
+    "gender": "Для всех",
     "cats": [
       "Женская",
-      "Унисекс",
+      "Для всех",
       "Нишевые"
     ],
     "family": "Восточные",
@@ -375,10 +375,10 @@
     "brand": "Genyum",
     "name": "Painter",
     "type": "Eau de Parfum",
-    "gender": "Унисекс",
+    "gender": "Для всех",
     "cats": [
       "Женская",
-      "Унисекс",
+      "Для всех",
       "Нишевые"
     ],
     "family": "Древесные",
@@ -436,16 +436,16 @@
     "brand": "Hormone Paris",
     "name": "Hormone",
     "type": "",
-    "gender": "Унисекс",
+    "gender": "Для всех",
     "cats": [
       "Женская",
-      "Унисекс"
+      "Для всех"
     ],
     "family": "Древесные",
     "familyNote": "Древесный",
     "popularity": 8,
     "tag": "",
-    "image": null,
+    "image": "/images/products/hormone.svg",
     "description": "Hormone Paris Hormone — в разливе: от пробника 3 мл до большого флакона. Подробности о нотах и стойкости подскажет менеджер.",
     "notes": null,
     "seasons": null,

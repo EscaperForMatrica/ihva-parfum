@@ -64,7 +64,6 @@ export function createApp({ config, db: dbOverride, send } = {}) {
       '{{canonical}}': config.siteUrl ? `<link rel="canonical" href="${esc(config.siteUrl + path)}">` : '',
       '{{ft_tg}}': config.publicTelegramUrl ? `<a href="${esc(config.publicTelegramUrl)}" rel="noopener" target="_blank">Telegram</a>` : '',
       '{{ft_wa}}': `<a href="${esc(site.whatsapp)}" rel="noopener" target="_blank">WhatsApp · ${esc(site.phoneDisplay)}</a>`,
-      '{{ft_ig}}': `<a href="${esc(site.instagram)}" rel="noopener" target="_blank">Instagram · ${esc(site.instagramHandle)}</a>`,
       '{{phone}}': esc(site.phoneDisplay), '{{phone_tel}}': esc(site.phoneTel),
       '{{menu_tg}}': config.publicTelegramUrl ? tgLink('class="btn-ghost sm"') : '',
       '{{menu_wa}}': waLink('class="btn-ghost sm"'),
