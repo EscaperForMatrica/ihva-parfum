@@ -1,0 +1,19 @@
+# Render Blueprint: New + → Blueprint → выбрать репозиторий. Токен и chat_id задаются в панели Render.
+services:
+  - type: web
+    name: ihva-parfum
+    runtime: node
+    plan: free            # для демо. Для боевого сайта — платный план + диск (см. ниже)
+    buildCommand: "true"
+    startCommand: node server/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - { key: NODE_VERSION, value: "22.13.0" }
+      - { key: TRUST_PROXY, value: "1" }
+      - { key: ORDER_TIMEZONE, value: Europe/Moscow }
+      - { key: DATABASE_PATH, value: ./storage/orders.db }
+      - { key: TELEGRAM_BOT_TOKEN, sync: false }
+      - { key: TELEGRAM_CHAT_ID, sync: false }
+      - { key: PUBLIC_TELEGRAM_URL, sync: false }
+    # Боевой запуск: plan: starter и диск, чтобы заявки в SQLite не пропадали при перезапуске:
+    # disk: { name: data, mountPath: /var/data, sizeGB: 1 }  + DATABASE_PATH=/var/data/orders.db
