@@ -1,7 +1,7 @@
 import { createHmac, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { validateProduct, validateFormat, slugify, VOLS } from './catalog.js';
+import { validateProduct, validateFormat, validateGroups, slugify, KINDS } from './catalog.js';
 import { createLimiter } from './ratelimit.js';
 import { formatOrderMessage, sendMessage } from './telegram.js';
 
@@ -92,6 +92,19 @@ export function createAdmin({ config, db, catalog, uploadsDir, send = sendMessag
       if (req.method === 'DELETE') { catalog.remove(id); return [200, { ok: true }]; }
     }
 
+    if (route === 'discounts' && req.method === 'GET') return [200, catalog.groups()];
+    if (route === 'discounts' && req.method === 'PUT') {
+      const parsed = validateGroups(await json());
+      if (!parsed.ok) return [400, { ok: false, fields: parsed.errors, message: 'Проверьте поля' }];
+      catalog.setGroups(parsed.value);
+      return [200, { ok: true }];
+    }
+    const km = route.match(/^products\/([a-z0-9-]+)\/kind$/);
+    if (km && req.method === 'PUT') {
+      const { kind } = await json();
+      if (kind !== '' && !(kind in KINDS)) return [400, { ok: false, message: 'Неизвестный вид' }];
+      return catalog.setKind(km[1], kind) ? [200, { ok: true }] : [404, { ok: false, message: 'Товар не найден' }];
+    }
     if (route === 'formats' && req.method === 'GET') return [200, catalog.formats()];
     const fm = route.match(/^formats\/(\d+)$/);
     if (fm && req.method === 'PUT') {

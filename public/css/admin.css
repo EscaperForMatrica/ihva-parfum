@@ -106,3 +106,14 @@ select.input{appearance:none;-webkit-appearance:none}
 @media (hover:none){.fimg span{opacity:1}}
 .fvol{font:500 26px/1 var(--serif)}
 @media (max-width:600px){.fgrid-a{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.fcard{padding:10px}.fvol{font-size:22px}}
+
+.sale-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.scard{border:1px solid var(--line-w);border-radius:var(--r-md);background:var(--graphite);padding:20px;display:flex;flex-direction:column;gap:16px}
+.scard.live{border-color:var(--gold);box-shadow:0 0 0 1px rgba(198,161,91,.25) inset}
+.input.big{font:500 22px/1 var(--serif);min-height:56px}
+.krow{display:grid;grid-template-columns:44px minmax(0,1fr) auto 170px;gap:14px;align-items:center;padding:10px 14px;border:1px solid var(--line-w);border-radius:var(--r-md);background:var(--graphite);margin-bottom:8px}
+.krow img{width:44px;height:55px;object-fit:cover;border-radius:5px}
+.krow .t small{font:600 10px/1.4 var(--sans);letter-spacing:.2em;text-transform:uppercase;color:var(--gold);display:block}
+.krow .t b{font:500 19px/1.1 var(--serif)}
+.krow select{min-height:44px}
+@media (max-width:600px){.krow{grid-template-columns:44px minmax(0,1fr) 130px}.krow .badge-s{display:none}}

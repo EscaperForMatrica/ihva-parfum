@@ -48,6 +48,9 @@ export const findVariant = (p, vol) => p.variants.find(v => v.vol === vol);
 export const availableVariants = p => p.variants.filter(v => v.available);
 export const inStock = p => availableVariants(p).length > 0;
 export const minVariant = p => availableVariants(p).sort((a, b) => a.price - b.price)[0] || null;
+export const KIND_LABEL = { original: 'Оригиналы', oil: 'Масляные' };
+/** Цена со старой ценой (если есть скидка). */
+export const oldPriceHTML = v => (v && v.oldPrice ? `<s class="old">${rub(v.oldPrice)}</s>` : '');
 export const imgOf = p => p.image || PLACEHOLDER;
 export const metaOf = p => [p.type, p.gender].filter(Boolean).join(' · ');
 
@@ -125,7 +128,7 @@ export function priceCart(products, src = cart.lines()) {
   for (const l of src) {
     const p = byId.get(l.id), v = p && findVariant(p, l.vol);
     if (!p || !v || !v.available) continue;
-    items.push({ ...l, product: p, unit: v.price, sum: v.price * l.qty });
+    items.push({ ...l, product: p, unit: v.price, oldUnit: v.oldPrice || 0, sum: v.price * l.qty });
   }
   return { items, count: items.reduce((a, i) => a + i.qty, 0), total: items.reduce((a, i) => a + i.sum, 0) };
 }
@@ -176,14 +179,14 @@ export function cardHTML(p, { added = false } = {}) {
     : `<button type="button" class="${added ? 'btn sm' : 'btn-ghost sm'} btn-add-d" data-add="${esc(p.id)}" aria-label="${esc(addLabel)}">${added ? svg('check', { cls: 'ck', sw: 1.6 }) : ''}<span>${added ? 'Добавлено' : 'В корзину'}</span></button>
        <button type="button" class="c-add btn-add-m ${added ? 'done' : ''}" data-add="${esc(p.id)}" aria-label="${esc(addLabel)}">${svg(added ? 'check' : 'plus', { sw: added ? 1.8 : 1.4 })}</button>`;
   return `<article class="card ${oos ? 'oos' : ''}" data-card="${esc(p.id)}">
-<a href="${href}" class="c-img" aria-label="${esc(p.brand + ' ' + p.name)}"><img src="${esc(imgOf(p))}" alt="Флакон ${esc(p.brand + ' ' + p.name)}" loading="lazy" width="640" height="800">${tag ? `<span class="c-tag">${esc(tag)}</span>` : ''}</a>
+<a href="${href}" class="c-img" aria-label="${esc(p.brand + ' ' + p.name)}"><img src="${esc(imgOf(p))}" alt="Флакон ${esc(p.brand + ' ' + p.name)}" loading="lazy" width="640" height="800">${tag ? `<span class="c-tag">${esc(tag)}</span>` : ''}${p.sale && !oos ? `<span class="c-sale" title="Скидка${p.sale.until ? ' до ' + esc(p.sale.until.split('-').reverse().join('.')) : ''}">−${p.sale.percent}%</span>` : ''}</a>
 <button type="button" class="ibtn c-fav ${fav ? 'on' : ''}" data-fav="${esc(p.id)}" aria-pressed="${fav}" aria-label="${fav ? 'Убрать из избранного' : 'В избранное'}">${svg('heart')}</button>
 <div class="c-body">
 <div class="c-brand">${esc(p.brand)}</div>
 <a href="${href}" class="c-name">${esc(p.name)}</a>
 <div class="c-meta">${esc(metaOf(p))}</div>
 <div class="c-row">
-<div style="display: flex; align-items: baseline; gap: 8px"><span class="price">${min ? 'от ' + rub(min.price) : esc(rub(p.variants[0].price))}</span><span class="small">${min ? min.vol + ' мл' : ''}</span></div>
+<div class="c-pricebox" style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap"><span class="price">${min ? 'от ' + rub(min.price) : esc(rub(p.variants[0].price))}</span>${oldPriceHTML(min)}<span class="small">${min ? min.vol + ' мл' : ''}</span></div>
 ${action}
 </div>
 </div>

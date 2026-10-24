@@ -12,7 +12,7 @@ function rowHTML(it) {
 <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
 <span class="c-brand">${esc(p.brand)}</span>
 <a href="${href}" style="font: 500 24px/1.1 'Cormorant Garamond', serif; color: #F5F1E8">${esc(p.name)}</a>
-<span class="small">Объём: <span style="color: #DCD7CD">${it.vol} мл</span> · ${rub(it.unit)} / шт.</span>
+<span class="small">Объём: <span style="color: #DCD7CD">${it.vol} мл</span> · ${rub(it.unit)}${it.oldUnit ? ` <s class="old">${rub(it.oldUnit)}</s>` : ''} / шт.</span>
 </div>
 <div class="r-qty"><div class="stepper sm" role="group" aria-label="Количество ${esc(p.name)}, ${it.vol} мл">
 <button type="button" data-act="dec" data-key="${esc(key)}" ${it.qty <= 1 ? 'disabled' : ''} aria-label="Уменьшить">${svg('minus', { sw: 1.6 })}</button>

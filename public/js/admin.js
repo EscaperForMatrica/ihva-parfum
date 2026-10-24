@@ -9,7 +9,8 @@ const VOLS = [3, 5, 6, 10, 30, 50];
 const LADDER = { 3: 1, 5: 1.6, 6: 1.8, 10: 2.8, 30: 7.5, 50: 11.6 };
 const PLACEHOLDER = '/images/placeholder.svg';
 
-const st = { tab: 'products', products: [], orders: [], formats: [], q: '', editing: null };
+const st = { tab: 'products', products: [], orders: [], formats: [], groups: {}, q: '', editing: null };
+const KINDS = { original: 'Оригиналы', oil: 'Масляные' };
 
 async function api(path, { method = 'GET', body, raw } = {}) {
   const res = await fetch('/api/admin/' + path, {
@@ -57,6 +58,7 @@ function shell(inner) {
   app.innerHTML = `<div class="adm-top"><div class="adm-top-in">
 <a class="logo" href="/admin"><b style="font-size:20px">IHVA</b><i style="font-size:7px">PARFUM</i></a>
 <nav class="adm-tabs"><button class="adm-tab ${st.tab === 'products' ? 'on' : ''}" data-tab="products">Товары</button>
+<button class="adm-tab ${st.tab === 'sales' ? 'on' : ''}" data-tab="sales">Скидки</button>
 <button class="adm-tab ${st.tab === 'formats' ? 'on' : ''}" data-tab="formats">Форматы</button>
 <button class="adm-tab ${st.tab === 'orders' ? 'on' : ''}" data-tab="orders">Заявки${fresh ? `<span class="n">${fresh}</span>` : ''}</button></nav>
 <a class="small" href="/" target="_blank" rel="noopener">Открыть сайт ↗</a><button class="btn-ghost sm" id="logout">Выйти</button></div></div>
@@ -88,7 +90,7 @@ function rowHTML(p) {
 <img src="${esc(imgOf(p))}" alt="" loading="lazy">
 <div class="t"><small>${esc(p.brand)}</small><b>${esc(p.name)}</b>
 <div class="vpills" aria-label="Объёмы: нажмите, чтобы включить или выключить">${p.variants.map(v => `<button type="button" class="vpill ${v.available ? '' : 'off'}" data-toggle="${v.vol}" title="${v.available ? 'В наличии — нажмите, чтобы убрать' : 'Нет в наличии — нажмите, чтобы вернуть'}">${v.vol} мл<i>${rub(v.price)}</i></button>`).join('')}</div></div>
-<div class="price">${p.hidden ? '<span class="badge-s">Скрыт</span>' : oos ? '<span class="badge-s bad">Нет в наличии</span>' : `<span class="badge-s ok">от ${rub(m)}</span>`}</div>
+<div class="price">${p.hidden ? '<span class="badge-s">Скрыт</span>' : oos ? '<span class="badge-s bad">Нет в наличии</span>' : `<span class="badge-s ok">от ${rub(m)}</span>`}${p.salePercent ? ` <span class="badge-s gold">−${p.salePercent}%</span>` : ''}${p.kind ? ` <span class="badge-s">${KINDS[p.kind]}</span>` : ''}</div>
 <div style="display:flex;gap:10px;align-items:center"><button type="button" class="sw ${p.hidden ? '' : 'on'}" data-hide role="switch" aria-checked="${!p.hidden}" aria-label="Показывать на сайте" title="${p.hidden ? 'Скрыт с сайта' : 'Показан на сайте'}"></button>
 <button type="button" class="btn-ghost sm" data-edit>Изменить</button></div></div>`;
 }
@@ -115,7 +117,7 @@ async function onListClick(e) {
 // ---------- редактор товара ----------
 function blank() {
   return { brand: '', name: '', type: 'Eau de Parfum', gender: 'Для всех', cats: ['Для всех'], family: 'Восточные', tag: '', popularity: 50, description: '', image: null, hidden: false,
-    notes: null, longevity: '', audience: '', brandInfo: '', variants: VOLS.map(vol => ({ vol, price: '', available: vol !== 6 })) };
+    kind: '', discount: null, notes: null, longevity: '', audience: '', brandInfo: '', variants: VOLS.map(vol => ({ vol, price: '', available: vol !== 6 })) };
 }
 
 function openEditor(p) {
@@ -136,6 +138,8 @@ function openEditor(p) {
 <div class="field"><span class="label">Категории</span><div style="display:flex;gap:8px;flex-wrap:wrap">${CATS.map(c => `<button type="button" class="chip ${d.cats.includes(c) ? 'on' : ''}" data-cat="${c}" aria-pressed="${d.cats.includes(c)}">${c}</button>`).join('')}</div><span class="err" data-e="cats" hidden></span></div>
 <div class="g2a"><div class="field"><label class="label" for="f-family">Тип аромата</label><select id="f-family" class="input">${FAMILIES.map(g => `<option ${g === d.family ? 'selected' : ''}>${g}</option>`).join('')}</select></div>
 <div class="field"><label class="label" for="f-tag">Метка на фото <em>— необязательно</em></label><input id="f-tag" class="input" value="${esc(d.tag)}" maxlength="24" placeholder="Нишевый, Хит, Новинка"></div></div>
+<div class="g2a"><div class="field"><label class="label" for="f-kind">Вид</label><select id="f-kind" class="input"><option value="">Не указан</option>${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${d.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+<div class="field"><label class="label" for="f-sale">Скидка на этот товар, % <em>— перекрывает скидку вида</em></label><div style="display:grid;grid-template-columns:90px 1fr;gap:10px"><input id="f-sale" class="input" inputmode="numeric" value="${d.discount?.percent || ''}" placeholder="0" aria-label="Процент скидки"><input id="f-sale-until" class="input" type="date" value="${esc(d.discount?.until || '')}" aria-label="Скидка действует до"></div><span class="err" data-e="discount" hidden></span><span class="hint">Пусто — без отдельной скидки. Дата — последний день скидки.</span></div></div>
 <div class="field"><label class="label" for="f-desc">Описание</label><textarea id="f-desc" class="input" maxlength="1000">${esc(d.description)}</textarea></div></div>
 <div class="ed-sec"><h3>Цены и наличие</h3><p class="hint" style="margin:0">Цена за один флакон выбранного объёма. Снимите галочку, если объёма нет в наличии.</p>
 <div id="vrows">${d.variants.map(v => `<div class="vrow"><b>${v.vol} мл</b><div class="field"><input class="input" inputmode="numeric" data-price="${v.vol}" value="${v.price ?? ''}" placeholder="Цена, ₽" aria-label="Цена ${v.vol} мл"><span class="err" data-e="price_${v.vol}" hidden></span></div><label class="chk"><input type="checkbox" data-avail="${v.vol}" ${v.available ? 'checked' : ''}>В наличии</label></div>`).join('')}</div>
@@ -191,7 +195,7 @@ function openEditor(p) {
     e.preventDefault();
     const body = {
       brand: $('#f-brand', el).value, name: $('#f-name', el).value, type: $('#f-type', el).value, gender: $('#f-gender', el).value, cats: d.cats,
-      family: $('#f-family', el).value, tag: $('#f-tag', el).value, description: $('#f-desc', el).value, image: d.image, hidden: d.hidden,
+      kind: $('#f-kind', el).value, discount: { percent: Number($('#f-sale', el).value) || 0, until: $('#f-sale-until', el).value }, family: $('#f-family', el).value, tag: $('#f-tag', el).value, description: $('#f-desc', el).value, image: d.image, hidden: d.hidden,
       popularity: Number($('#f-pop', el).value) || 50, longevity: $('#f-long', el).value, audience: $('#f-aud', el).value, brandInfo: $('#f-bi', el).value,
       notes: { top: $('#n-top', el).value, heart: $('#n-heart', el).value, base: $('#n-base', el).value },
       variants: VOLS.map(vol => ({ vol, price: Number($(`[data-price="${vol}"]`, el).value.replace(/\s/g, '')), available: $(`[data-avail="${vol}"]`, el).checked }))
@@ -240,6 +244,43 @@ ${o.comment ? `<div class="hint">Комментарий: ${esc(o.comment)}</div>
   });
 }
 
+// ---------- скидки ----------
+function renderSales() {
+  const g = st.groups, cnt = k => st.products.filter(p => p.kind === k).length;
+  const unset = st.products.filter(p => !p.kind).length;
+  shell(`<div class="adm-head"><div><div class="eyebrow">Акции</div><h1 class="display">Скидки</h1></div></div>
+<p class="hint" style="margin:-8px 0 20px;max-width:640px">Скидка применяется ко всем объёмам товара. На сайте показывается старая цена, метка «−N%», в корзине и заявке — цена со скидкой. Скидка на отдельный товар (в его карточке) важнее скидки вида.</p>
+<div class="sale-grid">${Object.entries(KINDS).map(([k, name]) => { const x = g[k] || { percent: 0, until: '', active: false }; return `<form class="scard ${x.active ? 'live' : ''}" data-kind="${k}" novalidate>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div><div class="eyebrow">${name}</div><div class="hint">${cnt(k)} ${plural(cnt(k), ['товар', 'товара', 'товаров'])}</div></div>
+<button type="button" class="sw ${x.active ? 'on' : ''}" data-act role="switch" aria-checked="${x.active}" aria-label="Скидка включена"></button></div>
+<div class="field"><label class="label">Размер скидки, %</label><input class="input big" name="percent" inputmode="numeric" value="${x.percent || ''}" placeholder="например 15" maxlength="2"></div>
+<div class="field"><label class="label">Действует до <em>— необязательно</em></label><input class="input" type="date" name="until" value="${esc(x.until || '')}"></div>
+<span class="err" data-e="err" hidden></span>
+<button class="btn" type="submit">Сохранить</button></form>`; }).join('')}</div>
+<div class="adm-head" style="margin-top:36px"><div><div class="eyebrow">Чтобы скидки работали</div><h2 class="display d3">Вид товаров</h2></div></div>
+<p class="hint" style="margin:-6px 0 14px">${unset ? `<b style="color:var(--err)">У ${unset} ${plural(unset, ['товара', 'товаров', 'товаров'])} вид не указан</b> — скидки на них не действуют. ` : ''}Выберите для каждого товара, оригинал это или масляные духи.</p>
+<div>${st.products.map(p => `<div class="krow" data-id="${esc(p.id)}"><img src="${esc(imgOf(p))}" alt="" loading="lazy"><div class="t"><small>${esc(p.brand)}</small><b>${esc(p.name)}</b></div>${p.salePercent ? `<span class="badge-s gold">−${p.salePercent}%</span>` : ''}<select class="input" aria-label="Вид: ${esc(p.name)}"><option value="">Не указан</option>${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${p.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`).join('')}</div>`);
+  $$('.scard').forEach(card => {
+    const k = card.dataset.kind; let active = Boolean((st.groups[k] || {}).active);
+    card.querySelector('[data-act]').addEventListener('click', e => { active = !active; e.currentTarget.classList.toggle('on', active); e.currentTarget.setAttribute('aria-checked', active); });
+    card.addEventListener('submit', async e => {
+      e.preventDefault();
+      const next = { ...st.groups, [k]: { percent: Number(card.percent.value) || 0, until: card.until.value, active } };
+      const err = card.querySelector('[data-e]'); err.hidden = true;
+      try {
+        await api('discounts', { method: 'PUT', body: next });
+        await load(); renderSales();
+        note(active && next[k].percent ? `Скидка ${next[k].percent}% включена` : 'Сохранено', KINDS[k]);
+      } catch (er) { if (er.message === 'unauthorized') return; if (er.data?.fields?.[k]) { err.textContent = er.data.fields[k]; err.hidden = false; } else note('Не сохранено', er.message, 'bad'); }
+    });
+  });
+  $$('.krow select').forEach(sel => sel.addEventListener('change', async () => {
+    const id = sel.closest('.krow').dataset.id;
+    try { await api(`products/${id}/kind`, { method: 'PUT', body: { kind: sel.value } }); await load(); renderSales(); note('Вид сохранён', ''); }
+    catch (er) { if (er.message !== 'unauthorized') note('Не сохранено', er.message, 'bad'); }
+  }));
+}
+
 // ---------- форматы флаконов ----------
 function renderFormats() {
   shell(`<div class="adm-head"><div><div class="eyebrow">Главная и страница аромата</div><h1 class="display">Форматы</h1></div></div>
@@ -264,8 +305,8 @@ function renderFormats() {
   });
 }
 
-function render() { ({ orders: renderOrders, formats: renderFormats }[st.tab] || renderProducts)(); }
-async function load() { [st.products, st.orders, st.formats] = await Promise.all([api('products'), api('orders'), api('formats')]); }
+function render() { ({ orders: renderOrders, formats: renderFormats, sales: renderSales }[st.tab] || renderProducts)(); }
+async function load() { [st.products, st.orders, st.formats, st.groups] = await Promise.all([api('products'), api('orders'), api('formats'), api('discounts')]); }
 async function boot() {
   try { await api('me'); } catch (e) { if (e.status === 503) { app.innerHTML = `<div class="login"><h1 class="display d3">Админка выключена</h1><p class="body">Задайте переменную <code>ADMIN_PASSWORD</code> на сервере и перезапустите приложение.</p></div>`; } else if (e.message !== 'unauthorized') renderLogin(); return; }
   await load(); render();

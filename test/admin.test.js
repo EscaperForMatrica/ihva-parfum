@@ -182,3 +182,44 @@ test('форматы флаконов: правка подписи/фото ви
   assert.equal((await call('formats/7', { method: 'PUT', body: { caption: 'x' } })).status, 404);
   assert.match(await (await fetch(base + '/')).text(), /Новая подпись/);
 });
+
+test('скидки по видам: витрина, расчёт заказа, Telegram; срок и отключение', async () => {
+  await login();
+  assert.equal((await call('products/xerjoff/kind', { method: 'PUT', body: { kind: 'original' } })).status, 200);
+  assert.equal((await call('products/chanel/kind', { method: 'PUT', body: { kind: 'oil' } })).status, 200);
+  assert.equal((await call('products/chanel/kind', { method: 'PUT', body: { kind: 'bad' } })).status, 400);
+  // нет скидки, пока группа не включена
+  let pub = await (await fetch(`${base}/api/products`)).json();
+  assert.equal(pub.find(p => p.id === 'xerjoff').sale, null);
+
+  const bad = await call('discounts', { method: 'PUT', body: { original: { percent: 95, active: true }, oil: {} } });
+  assert.equal(bad.status, 400);
+  const ok = await call('discounts', { method: 'PUT', body: { original: { percent: 10, active: true, until: '' }, oil: { percent: 20, active: false } } });
+  assert.equal(ok.status, 200);
+
+  pub = await (await fetch(`${base}/api/products`)).json();
+  const x = pub.find(p => p.id === 'xerjoff');
+  assert.equal(x.sale.percent, 10);
+  const v10 = x.variants.find(v => v.vol === 10);
+  assert.deepEqual([v10.price, v10.oldPrice], [2510, 2790]);           // 2790 −10% = 2511 → 2510
+  assert.equal(pub.find(p => p.id === 'chanel').sale, null);            // масляные выключены
+  assert.equal(pub.find(p => p.id === 'mancera').sale, null);           // вид не указан
+
+  const r = await (await fetch(`${base}/api/orders`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(order([{ id: 'xerjoff', vol: 10, qty: 2 }])) })).json();
+  assert.equal(r.order.total, 5020);                                     // цену от клиента не берём — только серверную со скидкой
+  assert.equal(r.order.items[0].discount, 10);
+  assert.match(mock.messages[0].text, /скидка 10%, без скидки 5 580 ₽/);
+
+  // скидка на товар важнее скидки вида
+  const p = (await (await call('products')).json()).find(z => z.id === 'xerjoff');
+  await call('products/xerjoff', { method: 'PUT', body: { ...p, discount: { percent: 30, until: '' } } });
+  assert.equal((await (await fetch(`${base}/api/products`)).json()).find(z => z.id === 'xerjoff').sale.percent, 30);
+  // просроченная скидка не действует
+  await call('products/xerjoff', { method: 'PUT', body: { ...p, discount: { percent: 30, until: '2020-01-01' } } });
+  await call('discounts', { method: 'PUT', body: { original: { percent: 10, active: true, until: '2020-01-01' }, oil: {} } });
+  assert.equal((await (await fetch(`${base}/api/products`)).json()).find(z => z.id === 'xerjoff').sale, null);
+  // отключение
+  await call('discounts', { method: 'PUT', body: { original: { percent: 10, active: false }, oil: {} } });
+  assert.equal((await (await fetch(`${base}/api/products`)).json()).find(z => z.id === 'xerjoff').variants[0].oldPrice, undefined);
+  assert.equal((await call('products/xerjoff', { method: 'PUT', body: { ...p, discount: { percent: 120 } } })).status, 400);
+});

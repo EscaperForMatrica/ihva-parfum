@@ -27,7 +27,9 @@ export function quote(catalog, rawItems) {
     const v = p?.variants.find(x => x.vol === vol);
     if (!p || !v) throw quoteError('Один из товаров больше не продаётся — обновите корзину');
     if (!v.available) throw quoteError(`${p.brand} ${p.name}, ${vol} мл — нет в наличии`);
-    lines.push({ id: p.id, brand: p.brand, name: p.name, vol, qty, unit: v.price, sum: v.price * qty });
+    const line = { id: p.id, brand: p.brand, name: p.name, vol, qty, unit: v.price, sum: v.price * qty };
+    if (v.oldPrice) { line.oldUnit = v.oldPrice; line.discount = p.sale.percent; }
+    lines.push(line);
   }
   return {
     lines,

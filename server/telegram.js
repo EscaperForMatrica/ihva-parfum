@@ -21,7 +21,7 @@ export function formatDate(iso, timeZone) {
 
 /** Текст уведомления менеджеру (parse_mode=HTML; все пользовательские значения экранируются). */
 export function formatOrderMessage(order, timeZone) {
-  const lines = order.items.map(l => `— ${esc(l.brand)} · ${esc(l.name)}, ${l.vol} мл × ${l.qty} — ${rub(l.sum)}`);
+  const lines = order.items.map(l => `— ${esc(l.brand)} · ${esc(l.name)}, ${l.vol} мл × ${l.qty} — ${rub(l.sum)}${l.discount ? ` (скидка ${l.discount}%, без скидки ${rub(l.oldUnit * l.qty)})` : ''}`);
   const out = [
     `🛍 <b>НОВЫЙ ЗАКАЗ №${esc(order.orderNo)}</b>`,
     `🕒 ${esc(formatDate(order.createdAt, timeZone))}`,

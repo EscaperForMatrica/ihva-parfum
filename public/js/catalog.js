@@ -1,20 +1,20 @@
-import { $, $$, esc, plural, initChrome, getProducts, bindCards, cardHTML, cart, favs, svg, fatal, inStock } from './core.js';
+import { $, $$, esc, plural, KIND_LABEL, initChrome, getProducts, bindCards, cardHTML, cart, favs, svg, fatal, inStock } from './core.js';
 
 initChrome();
 
 const CATS = ['Мужская', 'Женская', 'Для всех', 'Нишевые'];
 const VOLS = [3, 5, 6, 10, 30, 50];
 const PRICES = ['до 700 ₽', '700–1 000 ₽', 'от 1 000 ₽'];
-const KEYS = ['cats', 'brands', 'vols', 'prices', 'fams'];
-const PARAM = { cats: 'cat', brands: 'brand', vols: 'vol', prices: 'price', fams: 'fam' };
+const KEYS = ['kinds', 'cats', 'brands', 'vols', 'prices', 'fams'];
+const PARAM = { kinds: 'kind', cats: 'cat', brands: 'brand', vols: 'vol', prices: 'price', fams: 'fam' };
 
 const priceOk = (p, r) => {
   const base = Math.min(...p.variants.map(v => v.price));
   return r === 'до 700 ₽' ? base < 700 : r === '700–1 000 ₽' ? base >= 700 && base <= 1000 : base > 1000;
 };
-const label = (k, v) => (k === 'vols' ? v + ' мл' : v);
+const label = (k, v) => (k === 'vols' ? v + ' мл' : k === 'kinds' ? KIND_LABEL[v] || v : v);
 
-const state = { q: '', cats: [], brands: [], vols: [], prices: [], fams: [], sort: 'pop', fav: false };
+const state = { q: '', kinds: [], cats: [], brands: [], vols: [], prices: [], fams: [], sort: 'pop', fav: false };
 let products = [];
 
 function readUrl() {
@@ -41,6 +41,7 @@ function filtered() {
     const hay = (p.brand + ' ' + p.name).toLowerCase();
     return tokens.every(t => hay.includes(t))
       && (!fav || fav.has(p.id))
+      && (!state.kinds.length || state.kinds.includes(p.kind))
       && (!state.cats.length || state.cats.some(c => p.cats.includes(c)))
       && (!state.brands.length || state.brands.includes(p.brand))
       && (!state.vols.length || state.vols.some(v => p.variants.some(x => x.vol === v && x.available)))
@@ -55,13 +56,14 @@ function filtered() {
 }
 
 const options = () => ({
+  kinds: ['original', 'oil'].filter(k => products.some(p => p.kind === k)),
   cats: CATS,
   brands: [...new Set(products.map(p => p.brand))].sort((a, b) => a.localeCompare(b)),
   vols: VOLS,
   prices: PRICES,
   fams: [...new Set(products.map(p => p.family))].sort((a, b) => a.localeCompare(b, 'ru'))
 });
-const countOf = (k, v) => k === 'cats' ? products.filter(p => p.cats.includes(v)).length : k === 'brands' ? products.filter(p => p.brand === v).length : k === 'fams' ? products.filter(p => p.family === v).length : null;
+const countOf = (k, v) => k === 'kinds' ? products.filter(p => p.kind === v).length : k === 'cats' ? products.filter(p => p.cats.includes(v)).length : k === 'brands' ? products.filter(p => p.brand === v).length : k === 'fams' ? products.filter(p => p.family === v).length : null;
 
 // ---------- фильтры ----------
 function checkList(k, o) {
@@ -77,7 +79,8 @@ function chipList(k, o) {
   }).join('');
 }
 function renderDesktopFilters(o) {
-  $('#filters-desktop').innerHTML = `
+  const kindSec = o.kinds.length ? `<div class="fsec"><h3>Вид</h3>${checkList('kinds', o)}</div>` : '';
+  $('#filters-desktop').innerHTML = `${kindSec}
 <div class="fsec"><h3>Категория</h3>${checkList('cats', o)}</div>
 <div class="fsec" id="brands"><h3>Бренд</h3>${checkList('brands', o)}</div>
 <div class="fsec"><h3>Объём</h3><div style="display: flex; flex-wrap: wrap; gap: 8px">${chipList('vols', o)}</div></div>
@@ -86,7 +89,7 @@ function renderDesktopFilters(o) {
 }
 function renderPanelFilters(o) {
   const body = $('#fpanel-body'), top = body.scrollTop;
-  body.innerHTML = `
+  body.innerHTML = `${o.kinds.length ? `<div class="fsec"><h3>Вид</h3><div class="fp-chips">${chipList('kinds', o)}</div></div>` : ''}
 <div class="fsec"><h3>Категория</h3><div class="fp-chips">${chipList('cats', o)}</div></div>
 <div class="fsec"><h3>Бренд</h3><div class="fp-chips">${chipList('brands', o)}</div></div>
 <div class="fsec"><h3>Объём</h3><div class="fp-chips vols">${chipList('vols', o)}</div></div>

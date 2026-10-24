@@ -6,6 +6,11 @@ export const GENDERS = ['Мужской', 'Женский', 'Для всех'];
 export const CATS = ['Мужская', 'Женская', 'Для всех', 'Нишевые'];
 export const FAMILIES = ['Восточные', 'Древесные', 'Цветочные', 'Цитрусовые'];
 export const VOLS = [3, 5, 6, 10, 30, 50];
+export const KINDS = { original: 'Оригиналы', oil: 'Масляные' };
+
+const endOfDay = d => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? new Date(d + 'T23:59:59').getTime() : Infinity);
+/** Цена со скидкой, округлённая до 10 ₽ (чтобы цены оставались «красивыми»). */
+export const discounted = (price, pct) => Math.max(10, Math.round(price * (100 - pct) / 1000) * 10);
 const FAMILY_ADJ = { 'Восточные': 'Восточный', 'Древесные': 'Древесный', 'Цветочные': 'Цветочный', 'Цитрусовые': 'Цитрусовый' };
 
 /**
@@ -28,7 +33,7 @@ export function createCatalog(db) {
   }
 
   db.exec('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-  const catalog = { site, products: [], byId: new Map() };
+  const catalog = { site };
   /** Форматы флаконов (3–50 мл): подпись, подсказка и фото. Правятся в админке, по умолчанию — из data/site.json. */
   catalog.formats = () => {
     const saved = db.prepare("SELECT value FROM settings WHERE key = 'formats'").get();
@@ -41,13 +46,58 @@ export function createCatalog(db) {
     over[vol] = { ...(over[vol] || {}), ...patch };
     db.prepare("INSERT INTO settings (key, value) VALUES ('formats', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify(over));
   };
+  let visible = [], byId = new Map(), expiry = Infinity;
+
+  const readGroups = () => {
+    const saved = db.prepare("SELECT value FROM settings WHERE key = 'discounts'").get();
+    const g = saved ? JSON.parse(saved.value) : {};
+    return Object.fromEntries(Object.keys(KINDS).map(k => [k, { percent: 0, until: '', active: false, ...(g[k] || {}) }]));
+  };
+  /** Скидка товара: своя (если задана) важнее скидки группы. Возвращает { percent, until } или null. */
+  function saleOf(p, groups, now) {
+    const own = p.discount, grp = groups[p.kind];
+    for (const d of [own && own.percent > 0 ? own : null, grp && grp.active && grp.percent > 0 ? grp : null]) {
+      if (!d) continue;
+      const end = endOfDay(d.until);
+      if (now > end) continue;            // срок вышел
+      expiry = Math.min(expiry, end + 1);  // пересоберём каталог, когда скидка закончится
+      return { percent: d.percent, until: d.until || '' };
+    }
+    return null;
+  }
   const rows = () => db.prepare('SELECT data, hidden FROM products ORDER BY position, id').all().map(r => ({ ...JSON.parse(r.data), hidden: Boolean(r.hidden) }));
 
   catalog.refresh = () => {
-    catalog.products = rows().filter(p => !p.hidden).map(({ hidden, ...p }) => p);
-    catalog.byId = new Map(catalog.products.map(p => [p.id, p]));
+    const now = Date.now(), groups = readGroups();
+    expiry = Infinity;
+    visible = rows().filter(p => !p.hidden).map(({ hidden, discount, ...p }) => {
+      const sale = saleOf({ ...p, discount }, groups, now);
+      p.kind = p.kind || '';
+      p.sale = sale;
+      if (sale) p.variants = p.variants.map(v => ({ ...v, oldPrice: v.price, price: discounted(v.price, sale.percent) }));
+      return p;
+    });
+    byId = new Map(visible.map(p => [p.id, p]));
   };
-  catalog.all = () => rows();
+  // публичные данные пересобираются сами, когда у скидки истёк срок
+  Object.defineProperty(catalog, 'products', { get() { if (Date.now() >= expiry) catalog.refresh(); return visible; }, enumerable: true });
+  Object.defineProperty(catalog, 'byId', { get() { if (Date.now() >= expiry) catalog.refresh(); return byId; }, enumerable: true });
+
+  /** Для админки: «сырые» цены + действующая скидка. */
+  catalog.all = () => { const now = Date.now(), groups = readGroups(); return rows().map(p => ({ ...p, kind: p.kind || '', salePercent: saleOf(p, groups, now)?.percent || 0 })); };
+  catalog.groups = readGroups;
+  catalog.setGroups = g => {
+    db.prepare("INSERT INTO settings (key, value) VALUES ('discounts', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(JSON.stringify(g));
+    catalog.refresh();
+  };
+  catalog.setKind = (id, kind) => {
+    const row = db.prepare('SELECT data FROM products WHERE id = ?').get(id);
+    if (!row) return false;
+    const data = JSON.parse(row.data); data.kind = kind;
+    db.prepare('UPDATE products SET data = ? WHERE id = ?').run(JSON.stringify(data), id);
+    catalog.refresh();
+    return true;
+  };
   catalog.upsert = p => {
     const { hidden = false, ...data } = p;
     data.popularity = Number.isInteger(data.popularity) ? data.popularity : 99;
@@ -91,6 +141,12 @@ export function validateProduct(body, existing = {}) {
   v.audience = text(body.audience, 300) || null;
   v.brandInfo = text(body.brandInfo, 400) || null;
   v.hidden = Boolean(body.hidden);
+  v.kind = Object.keys(KINDS).includes(body.kind) ? body.kind : '';
+  const dp = Number(body.discount?.percent) || 0;
+  if (dp < 0 || dp > 90 || !Number.isInteger(dp)) e.discount = 'Скидка — целое число от 1 до 90';
+  const du = String(body.discount?.until || '');
+  if (du && !/^\d{4}-\d{2}-\d{2}$/.test(du)) e.discount = 'Дата в формате ГГГГ-ММ-ДД';
+  v.discount = dp > 0 ? { percent: dp, until: du } : null;
 
   const incoming = new Map((Array.isArray(body.variants) ? body.variants : []).map(x => [Number(x.vol), x]));
   v.variants = VOLS.map(vol => {
@@ -115,4 +171,17 @@ export function validateFormat(body, current) {
   v.hint = str(body.hint, 60);
   v.image = typeof body.image === 'string' && /^\/(images|uploads)\/[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/.test(body.image) ? body.image : current.image;
   return { ok: !Object.keys(e).length, errors: e, value: v };
+}
+
+/** Проверка скидок по группам из админки. */
+export function validateGroups(body) {
+  const e = {}, out = {};
+  for (const k of Object.keys(KINDS)) {
+    const g = body?.[k] || {};
+    const percent = Number(g.percent) || 0, until = String(g.until || '');
+    if (!Number.isInteger(percent) || percent < 0 || percent > 90) e[k] = 'Скидка — целое число от 0 до 90';
+    if (until && !/^\d{4}-\d{2}-\d{2}$/.test(until)) e[k] = 'Дата в формате ГГГГ-ММ-ДД';
+    out[k] = { percent, until, active: Boolean(g.active) && percent > 0 };
+  }
+  return { ok: !Object.keys(e).length, errors: e, value: out };
 }

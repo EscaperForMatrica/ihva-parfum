@@ -1,4 +1,4 @@
-import { $, $$, esc, rub, initChrome, getProducts, cart, favs, toast, svg, fatal, site, waLink, imgOf, metaOf, findVariant, availableVariants, inStock, minVariant, MAX_QTY } from './core.js';
+import { $, $$, esc, rub, oldPriceHTML, initChrome, getProducts, cart, favs, toast, svg, fatal, site, waLink, imgOf, metaOf, findVariant, availableVariants, inStock, minVariant, MAX_QTY } from './core.js';
 
 initChrome();
 
@@ -22,7 +22,7 @@ function relatedCard(x) {
   return `<article class="card">
 <a href="${href}" class="c-img" aria-label="${esc(x.brand + ' ' + x.name)}"><img src="${esc(imgOf(x))}" alt="Флакон ${esc(x.brand + ' ' + x.name)}" loading="lazy"></a>
 <div class="c-body"><div class="c-brand">${esc(x.brand)}</div><a href="${href}" class="c-name">${esc(x.name)}</a><div class="c-meta">${esc(metaOf(x))}</div>
-<div class="c-row"><div style="display: flex; align-items: baseline; gap: 8px"><span class="price">${min ? 'от ' + rub(min.price) : 'нет в наличии'}</span><span class="small">${min ? min.vol + ' мл' : ''}</span></div><a href="${href}" class="btn-ghost sm">Подробнее</a></div></div></article>`;
+<div class="c-row"><div style="display: flex; align-items: baseline; gap: 8px"><span class="price">${min ? 'от ' + rub(min.price) : 'нет в наличии'}</span>${oldPriceHTML(min)}<span class="small">${min ? min.vol + ' мл' : ''}</span></div><a href="${href}" class="btn-ghost sm">Подробнее</a></div></div></article>`;
 }
 
 function build(products) {
@@ -61,7 +61,7 @@ ${oos ? '<span class="c-tag" style="top: 20px; left: 20px">Нет в налич�
 </div>
 <p class="body">${esc(p.description)}</p>
 <hr class="hair">
-<div style="display: flex; align-items: baseline; gap: 12px"><span class="num pd-price" id="price" style="font: 600 34px/1 Manrope, sans-serif; color: #E5D1A1"></span><span class="small" id="price-note" style="font-size: 14px"></span></div>
+<div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap"><span class="num pd-price" id="price" style="font: 600 34px/1 Manrope, sans-serif; color: #E5D1A1"></span><s class="old old-lg" id="price-old" hidden></s><span class="small" id="price-note" style="font-size: 14px"></span><span class="sale-pill" id="sale-pill" hidden></span></div>
 <div style="display: flex; flex-direction: column; gap: 12px">
 <div style="display: flex; justify-content: space-between; align-items: baseline"><span class="label" id="vol-label">Объём</span><span class="small" id="vol-hint"></span></div>
 <div class="vgrid" id="vols" role="radiogroup" aria-labelledby="vol-label"></div>
@@ -120,7 +120,7 @@ function paint() {
   const active = document.activeElement?.dataset?.vol;
   $('#vols').innerHTML = p.variants.map(x => {
     const on = x.vol === state.vol, na = !x.available;
-    return `<button type="button" class="vol ${na ? 'na' : on ? 'on' : ''}" data-vol="${x.vol}" ${na ? 'disabled' : ''} role="radio" aria-checked="${on && !na}" aria-label="${x.vol} мл, ${na ? 'нет в наличии' : rub(x.price)}"><b>${x.vol} мл</b><span>${na ? 'нет' : rub(x.price)}</span></button>`;
+    return `<button type="button" class="vol ${na ? 'na' : on ? 'on' : ''}" data-vol="${x.vol}" ${na ? 'disabled' : ''} role="radio" aria-checked="${on && !na}" aria-label="${x.vol} мл, ${na ? 'нет в наличии' : rub(x.price)}"><b>${x.vol} мл</b><span>${na ? 'нет' : rub(x.price)}</span>${!na && x.oldPrice ? `<s class="old old-sm">${rub(x.oldPrice)}</s>` : ''}</button>`;
   }).join('');
   if (active) $(`#vols [data-vol="${active}"]`)?.focus();
 
@@ -132,6 +132,8 @@ function paint() {
   $('#vol-hint').textContent = hint[state.vol] || '';
   const total = v.price * state.qty;
   $('#price').textContent = rub(total);
+  const oldEl = $('#price-old'); oldEl.hidden = !v.oldPrice; oldEl.textContent = v.oldPrice ? rub(v.oldPrice * state.qty) : '';
+  const pill = $('#sale-pill'); pill.hidden = !p.sale; pill.textContent = p.sale ? `−${p.sale.percent}%${p.sale.until ? ' до ' + p.sale.until.split('-').reverse().join('.') : ''}` : '';
   const note = `за ${state.vol} мл` + (state.qty > 1 ? ` × ${state.qty}` : '');
   $('#price-note').textContent = note;
   $('#qty').textContent = state.qty;
@@ -186,5 +188,5 @@ try {
   });
   $('#buybar').addEventListener('click', e => { if (e.target.closest('#bar-add')) add(); });
 } catch (e) {
-  if (e.message !== 'not found') fatal(root);
+  if (e.message !== 'not found') { console.error(e); fatal(root); }
 }

@@ -49,7 +49,7 @@ function summaryHTML({ items, total }) {
   return `<aside class="co-side panel" style="padding: 28px; display: flex; flex-direction: column; gap: 20px" aria-label="Состав заказа">
 <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 class="display" style="font-size: 28px">Ваш заказ</h2><a href="/cart" class="small" style="color: #E5D1A1">Изменить</a></div>
 <div style="display: flex; flex-direction: column; gap: 16px">
-${items.map(it => `<div class="co-item"><img src="${esc(imgOf(it.product))}" alt="" width="56" height="70"><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0"><span style="font: 500 19px/1.1 'Cormorant Garamond', serif">${esc(it.product.name)}</span><span class="small" style="font-size: 12.5px">${esc(it.product.brand)} · ${it.vol} мл × ${it.qty}</span></div><span class="num" style="font: 500 14px/1 Manrope, sans-serif">${rub(it.sum)}</span></div>`).join('')}
+${items.map(it => `<div class="co-item"><img src="${esc(imgOf(it.product))}" alt="" width="56" height="70"><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0"><span style="font: 500 19px/1.1 'Cormorant Garamond', serif">${esc(it.product.name)}</span><span class="small" style="font-size: 12.5px">${esc(it.product.brand)} · ${it.vol} мл × ${it.qty}${it.oldUnit ? ` · скидка ${it.product.sale.percent}%` : ''}</span></div><span class="num" style="font: 500 14px/1 Manrope, sans-serif">${rub(it.sum)}</span></div>`).join('')}
 </div>
 <hr class="hair">
 <div style="display: flex; justify-content: space-between"><span class="small" style="font-size: 14px">Доставка</span><span class="small" style="font-size: 14px">по согласованию</span></div>
