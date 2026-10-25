@@ -188,7 +188,7 @@ export function cardHTML(p, { added = false } = {}) {
 <a href="${href}" class="c-name">${esc(p.name)}</a>
 <div class="c-meta">${esc(metaOf(p))}</div>
 <div class="c-row">
-<div class="c-pricebox" style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap"><span class="price">${min ? 'от ' + rub(min.price) : esc(rub(p.variants[0].price))}</span>${oldPriceHTML(min)}<span class="small">${min ? volLabel(p, min.vol) : ''}</span></div>
+<div class="c-pricebox" style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap"><span class="price">${min ? (p.variants.length > 1 ? 'от ' : '') + rub(min.price) : esc(rub(p.variants[0].price))}</span>${oldPriceHTML(min)}<span class="small">${min ? volLabel(p, min.vol) : ''}</span></div>
 ${action}
 </div>
 </div>

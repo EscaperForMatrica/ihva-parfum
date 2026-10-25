@@ -63,7 +63,7 @@ ${oos ? '<span class="c-tag" style="top: 20px; left: 20px">Нет в налич�
 <hr class="hair">
 <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap"><span class="num pd-price" id="price" style="font: 600 34px/1 Manrope, sans-serif; color: #E5D1A1"></span><s class="old old-lg" id="price-old" hidden></s><span class="small" id="price-note" style="font-size: 14px"></span><span class="sale-pill" id="sale-pill" hidden></span></div>
 <div style="display: flex; flex-direction: column; gap: 12px">
-<div style="display: flex; justify-content: space-between; align-items: baseline"><span class="label" id="vol-label">Объём</span><span class="small" id="vol-hint"></span></div>
+<div style="display: flex; justify-content: space-between; align-items: baseline"><span class="label" id="vol-label">${p.variants.some(v => v.vol > 0) ? 'Объём' : 'Формат'}</span><span class="small" id="vol-hint"></span></div>
 <div class="vgrid" id="vols" role="radiogroup" aria-labelledby="vol-label"></div>
 <div id="full-wrap" role="radiogroup" aria-label="Целый флакон"></div>
 </div>

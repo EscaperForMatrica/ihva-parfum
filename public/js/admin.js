@@ -124,6 +124,9 @@ function openEditor(p) {
   const d = structuredClone(p || blank());
   st.editing = d;
   const n = d.notes || {};
+  let mode = d.variants.length && d.variants.every(v => v.vol === 0) ? 'bottle' : 'decant';
+  const decants = VOLS.map(vol => d.variants.find(v => v.vol === vol) || (d.decantStash || []).find(v => v.vol === vol) || { vol, price: '', available: vol !== 6 });
+  const full = d.variants.find(v => v.vol === 0) || { price: '', available: true };
   const el = document.createElement('div');
   el.innerHTML = `<div class="ed-back" data-close></div><form class="ed" role="dialog" aria-modal="true" aria-label="${isNew ? 'Новый товар' : 'Редактирование'}" novalidate>
 <div class="ed-head"><h2>${isNew ? 'Новый товар' : esc(d.name)}</h2><button type="button" class="ibtn" data-close aria-label="Закрыть">${svg('close')}</button></div>
@@ -140,13 +143,15 @@ function openEditor(p) {
 <div class="g2a"><div class="field"><label class="label" for="f-kind">Вид</label><select id="f-kind" class="input"><option value="">Не указан</option>${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${d.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
 <div class="field"><label class="label" for="f-sale">Скидка на этот товар, % <em>— перекрывает скидку вида</em></label><div style="display:grid;grid-template-columns:90px 1fr;gap:10px"><input id="f-sale" class="input" inputmode="numeric" value="${d.discount?.percent || ''}" placeholder="0" aria-label="Процент скидки"><input id="f-sale-until" class="input" type="date" value="${esc(d.discount?.until || '')}" aria-label="Скидка действует до"></div><span class="err" data-e="discount" hidden></span><span class="hint">Пусто — без отдельной скидки. Дата — последний день скидки.</span></div></div>
 <div class="field"><label class="label" for="f-desc">Описание</label><textarea id="f-desc" class="input" maxlength="1000">${esc(d.description)}</textarea></div></div>
-<div class="ed-sec"><h3>Цены и наличие</h3><p class="hint" style="margin:0">Цена за один флакон выбранного объёма. Снимите галочку, если объёма нет в наличии.</p>
-<div id="vrows">${d.variants.map(v => `<div class="vrow"><b>${v.vol} мл</b><div class="field"><input class="input" inputmode="numeric" data-price="${v.vol}" value="${v.price ?? ''}" placeholder="Цена, ₽" aria-label="Цена ${v.vol} мл"><span class="err" data-e="price_${v.vol}" hidden></span></div><label class="chk"><input type="checkbox" data-avail="${v.vol}" ${v.available ? 'checked' : ''}>В наличии</label></div>`).join('')}</div>
-<button type="button" class="lnk" id="auto" style="align-self:flex-start">Рассчитать остальные цены от 3 мл</button></div>
-<div class="ed-sec"><h3>Целый флакон <em style="text-transform:none;letter-spacing:0;color:var(--muted)">— без разлива</em></h3><p class="hint" style="margin:0">Если продаёте оригинальный флакон целиком, укажите объём и цену. Пустая цена — этой позиции на сайте не будет.</p>
-<div class="vrow" style="grid-template-columns:110px 1fr auto"><div class="field"><input class="input" id="f-bml" inputmode="numeric" value="${d.bottleMl || ''}" placeholder="Объём, мл" aria-label="Объём флакона, мл"><span class="err" data-e="bottleMl" hidden></span></div>
-<div class="field"><input class="input" inputmode="numeric" data-price="0" value="${d.variants.find(v => v.vol === 0)?.price ?? ''}" placeholder="Цена флакона, ₽" aria-label="Цена целого флакона"><span class="err" data-e="price_0" hidden></span></div>
-<label class="chk"><input type="checkbox" data-avail="0" ${d.variants.find(v => v.vol === 0)?.available !== false ? 'checked' : ''}>В наличии</label></div></div>
+<div class="ed-sec"><h3>Формат продажи</h3>
+<div class="seg" role="radiogroup" aria-label="Формат продажи"><button type="button" class="seg-b ${mode === 'decant' ? 'on' : ''}" data-mode="decant" role="radio" aria-checked="${mode === 'decant'}"><b>Разливной формат</b><span>3, 5, 10, 30, 50 мл…</span></button><button type="button" class="seg-b ${mode === 'bottle' ? 'on' : ''}" data-mode="bottle" role="radio" aria-checked="${mode === 'bottle'}"><b>Целый флакон</b><span>без разлива, одна цена</span></button></div>
+<div id="m-decant" ${mode === 'decant' ? '' : 'hidden'}><p class="hint" style="margin:0 0 12px">Цена за один флакон выбранного объёма. Снимите галочку, если объёма нет в наличии.</p>
+<div id="vrows">${decants.map(v => `<div class="vrow"><b>${v.vol} мл</b><div class="field"><input class="input" inputmode="numeric" data-price="${v.vol}" value="${v.price ?? ''}" placeholder="Цена, ₽" aria-label="Цена ${v.vol} мл"><span class="err" data-e="price_${v.vol}" hidden></span></div><label class="chk"><input type="checkbox" data-avail="${v.vol}" ${v.available ? 'checked' : ''}>В наличии</label></div>`).join('')}</div>
+<button type="button" class="lnk" id="auto" style="margin-top:8px">Рассчитать остальные цены от 3 мл</button></div>
+<div id="m-bottle" ${mode === 'bottle' ? '' : 'hidden'}><p class="hint" style="margin:0 0 12px">Укажите объём флакона и общую цену за него.</p>
+<div class="vrow" style="grid-template-columns:130px 1fr auto"><div class="field"><label class="label" for="f-bml">Объём, мл</label><input class="input" id="f-bml" inputmode="numeric" value="${d.bottleMl || ''}" placeholder="100"><span class="err" data-e="bottleMl" hidden></span></div>
+<div class="field"><label class="label" for="f-bp">Цена за флакон, ₽</label><input class="input" id="f-bp" inputmode="numeric" data-price="0" value="${full.price ?? ''}" placeholder="12 900"><span class="err" data-e="price_0" hidden></span></div>
+<label class="chk" style="padding-top:22px"><input type="checkbox" data-avail="0" ${full.available !== false ? 'checked' : ''}>В наличии</label></div></div></div>
 <div class="ed-sec"><h3>Показ на сайте</h3><label class="vrow" style="grid-template-columns:auto 1fr;cursor:pointer"><button type="button" class="sw ${d.hidden ? '' : 'on'}" id="f-vis" role="switch" aria-checked="${!d.hidden}"></button><span id="f-vis-t" style="font:500 14px/1.3 var(--sans)">${d.hidden ? 'Скрыт — покупатели не видят этот товар' : 'Показан в каталоге'}</span></label></div>
 <details class="opt" ${d.notes || d.longevity || d.audience || d.brandInfo ? 'open' : ''}><summary>Ноты и дополнительные сведения</summary><div class="ed-sec">
 <div class="field"><label class="label" for="n-top">Верхние ноты</label><input id="n-top" class="input" value="${esc(n.top || '')}" maxlength="120"></div>
@@ -169,6 +174,8 @@ function openEditor(p) {
     const c = e.target.closest('[data-cat]');
     if (c) { const v = c.dataset.cat, i = d.cats.indexOf(v); if (i >= 0) d.cats.splice(i, 1); else d.cats.push(v); c.classList.toggle('on', i < 0); c.setAttribute('aria-pressed', i < 0); }
     if (e.target.closest('#f-vis')) { d.hidden = !d.hidden; $('#f-vis', el).classList.toggle('on', !d.hidden); $('#f-vis', el).setAttribute('aria-checked', !d.hidden); $('#f-vis-t', el).textContent = d.hidden ? 'Скрыт — покупатели не видят этот товар' : 'Показан в каталоге'; }
+    const m = e.target.closest('[data-mode]');
+    if (m) { mode = m.dataset.mode; $$('[data-mode]', el).forEach(b => { const on = b.dataset.mode === mode; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); }); $('#m-decant', el).hidden = mode !== 'decant'; $('#m-bottle', el).hidden = mode !== 'bottle'; }
     if (e.target.closest('#auto')) {
       const base = Number($('[data-price="3"]', el).value);
       if (!base) return note('Сначала укажите цену за 3 мл', '', 'bad');
@@ -201,7 +208,7 @@ function openEditor(p) {
       kind: $('#f-kind', el).value, discount: { percent: Number($('#f-sale', el).value) || 0, until: $('#f-sale-until', el).value }, family: $('#f-family', el).value, tag: $('#f-tag', el).value, description: $('#f-desc', el).value, image: d.image, hidden: d.hidden,
       popularity: Number($('#f-pop', el).value) || 50, longevity: $('#f-long', el).value, audience: $('#f-aud', el).value, brandInfo: $('#f-bi', el).value,
       notes: { top: $('#n-top', el).value, heart: $('#n-heart', el).value, base: $('#n-base', el).value },
-      bottleMl: Number($('#f-bml', el).value) || 0,
+      mode, bottleMl: Number($('#f-bml', el).value) || 0,
       variants: [...VOLS, 0].map(vol => ({ vol, price: Number($(`[data-price="${vol}"]`, el).value.replace(/\s/g, '')), available: $(`[data-avail="${vol}"]`, el).checked }))
     };
     $$('[data-e]', el).forEach(x => { x.hidden = true; });

@@ -70,7 +70,7 @@ export function createCatalog(db) {
   catalog.refresh = () => {
     const now = Date.now(), groups = readGroups();
     expiry = Infinity;
-    visible = rows().filter(p => !p.hidden).map(({ hidden, discount, ...p }) => {
+    visible = rows().filter(p => !p.hidden).map(({ hidden, discount, decantStash, ...p }) => {
       const sale = saleOf({ ...p, discount }, groups, now);
       p.kind = p.kind || '';
       p.sale = sale;
@@ -149,22 +149,29 @@ export function validateProduct(body, existing = {}) {
   v.discount = dp > 0 ? { percent: dp, until: du } : null;
 
   const incoming = new Map((Array.isArray(body.variants) ? body.variants : []).map(x => [Number(x.vol), x]));
-  // целый флакон (без разлива): vol = 0, размер флакона — bottleMl. Необязателен: нет цены — нет позиции.
-  const full = incoming.get(0) || {};
-  const fullPrice = Number(full.price) || 0;
-  const bottleMl = Number(body.bottleMl) || 0;
-  if (fullPrice) {
-    if (!Number.isInteger(fullPrice) || fullPrice < 1 || fullPrice > 5_000_000) e.price_0 = 'Укажите цену флакона';
-    if (!Number.isInteger(bottleMl) || bottleMl < 5 || bottleMl > 1000) e.bottleMl = 'Объём флакона, мл (5–1000)';
-  }
-  v.bottleMl = fullPrice && !e.bottleMl ? bottleMl : null;
-  v.variants = VOLS.map(vol => {
+  // Формат продажи — или разлив (6 объёмов), или целый флакон (vol = 0, размер в bottleMl). Не оба сразу.
+  const mode = body.mode === 'bottle' ? 'bottle' : 'decant';
+  const decants = VOLS.map(vol => {
     const x = incoming.get(vol) || {};
     const price = Number(x.price);
-    if (!Number.isInteger(price) || price < 1 || price > 1_000_000) { e[`price_${vol}`] = 'Укажите цену'; }
-    return { vol, price, available: Boolean(x.available), priceSource: 'admin' };
+    return { vol, price, available: Boolean(x.available), priceSource: 'admin', bad: !Number.isInteger(price) || price < 1 || price > 1_000_000 };
   });
-  if (fullPrice && !e.price_0 && !e.bottleMl) v.variants.push({ vol: 0, price: fullPrice, available: Boolean(full.available), priceSource: 'admin' });
+  const strip = ({ bad, ...rest }) => rest;
+  if (mode === 'decant') {
+    decants.forEach(d => { if (d.bad) e[`price_${d.vol}`] = 'Укажите цену'; });
+    v.variants = decants.map(strip);
+    v.bottleMl = null;
+    v.decantStash = null;
+  } else {
+    const full = incoming.get(0) || {};
+    const price = Number(full.price), ml = Number(body.bottleMl);
+    if (!Number.isInteger(price) || price < 1 || price > 5_000_000) e.price_0 = 'Укажите цену флакона';
+    if (!Number.isInteger(ml) || ml < 5 || ml > 1000) e.bottleMl = 'Объём флакона, мл (5–1000)';
+    v.bottleMl = e.bottleMl ? null : ml;
+    v.variants = e.price_0 ? [] : [{ vol: 0, price, available: Boolean(full.available), priceSource: 'admin' }];
+    // цены разлива не теряем — вдруг вернутся к разливному формату
+    v.decantStash = decants.every(d => !d.bad) ? decants.map(strip) : (existing.decantStash ?? existing.variants?.filter(x => x.vol > 0) ?? null);
+  }
   return { ok: Object.keys(e).length === 0, errors: e, value: v };
 }
 
