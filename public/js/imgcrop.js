@@ -55,7 +55,7 @@ export function detectSubject(bmp) {
     }
     mask = m2;
   }
-  const seen = new Uint8Array(w * h); let bestC = null;
+  const seen = new Uint8Array(w * h); let bestC = null; const comps = [];
   const stack = [];
   for (let s = 0; s < w * h; s++) {
     if (!mask[s] || seen[s]) continue;
@@ -69,9 +69,17 @@ export function detectSubject(bmp) {
     const centrality = 1 - Math.hypot(cx - 0.5, cy - 0.5);
     // учитываем и площадь рамки: контур прозрачного флакона важнее одной этикетки внутри него
     const val = Math.sqrt(area * (x1 - x0 + 1) * (y1 - y0 + 1)) * Math.max(0.2, centrality);
+    comps.push({ x0, y0, x1, y1, area, s });
     if (!bestC || val > bestC.val) bestC = { val, x0, y0, x1, y1, area, s };
   }
   if (!bestC) return null;
+  // присоединяем соседние части предмета (крышку, горлышко), которые отделились от основной области
+  const gap = Math.max(w, h) * 0.07, parts = [bestC];
+  for (const c of comps) {
+    if (c === bestC || c.area < w * h * 0.002) continue;
+    if (c.x0 <= bestC.x1 + gap && c.x1 >= bestC.x0 - gap && c.y0 <= bestC.y1 + gap && c.y1 >= bestC.y0 - gap) parts.push(c);
+  }
+  bestC = { ...bestC, parts, x0: Math.min(...parts.map(c => c.x0)), y0: Math.min(...parts.map(c => c.y0)), x1: Math.max(...parts.map(c => c.x1)), y1: Math.max(...parts.map(c => c.y1)) };
   const frac = (bestC.x1 - bestC.x0 + 1) * (bestC.y1 - bestC.y0 + 1) / (w * h);
   if (frac < 0.03 || frac > 0.97) return null;       // ничего внятного — отдадим центр-кроп
   return { x: bestC.x0 / k, y: bestC.y0 / k, w: (bestC.x1 - bestC.x0 + 1) / k, h: (bestC.y1 - bestC.y0 + 1) / k, mask: subjectMask(mask, w, h, bestC) };
@@ -79,7 +87,7 @@ export function detectSubject(bmp) {
 
 /** Маска предмета: выбранная область, дыры (прозрачное стекло) закрашены построчно, края чуть сжаты. */
 function subjectMask(mask, w, h, c) {
-  const comp = new Uint8Array(w * h), stack = [c.s]; comp[c.s] = 1;
+  const comp = new Uint8Array(w * h), stack = c.parts.map(p => p.s); stack.forEach(i => { comp[i] = 1; });
   while (stack.length) {
     const i = stack.pop(), x = i % w;
     for (const j of [i - 1, i + 1, i - w, i + w]) if (j >= 0 && j < w * h && mask[j] && !comp[j] && Math.abs((j % w) - x) <= 1) { comp[j] = 1; stack.push(j); }
@@ -90,12 +98,18 @@ function subjectMask(mask, w, h, c) {
     for (let x = 0; x < w; x++) if (comp[y * w + x]) { if (a < 0) a = x; b = x; }
     if (a >= 0) filled.fill(1, y * w + a, y * w + b + 1);
   }
-  const out = new Uint8Array(filled);                    // сжатие на 1 px: убирает ореол от расширения
-  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
-    const i = y * w + x;
-    if (filled[i] && !(filled[i - 1] && filled[i + 1] && filled[i - w] && filled[i + w])) out[i] = 0;
+  // сжимаем маску: она была расширена, и по краю остался бы резкий ореол фона
+  const n = Math.max(1, Math.min(3, Math.floor(Math.min(c.x1 - c.x0, c.y1 - c.y0) / 8)));
+  let cur = filled;
+  for (let it = 0; it < n; it++) {
+    const nx = new Uint8Array(cur);
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      if (cur[i] && !(cur[i - 1] && cur[i + 1] && cur[i - w] && cur[i + w])) nx[i] = 0;
+    }
+    cur = nx;
   }
-  return { data: out, w, h };
+  return { data: cur, w, h };
 }
 
 /** Маска «вручную»: скруглённый прямоугольник по области флакона (в том же низком разрешении, что и автомаска). */
@@ -126,13 +140,14 @@ function softCopy(src, w, h, factor) {
 }
 
 /** Рисует фрагмент снимка src (в координатах исходника) размером ow×oh; при strength > 0 фон вне предмета размыт. */
-export function compose(bmp, subject, strength, src, ow, oh) {
+export function compose(bmp, subject, strength, src, ow, oh, dim = 0) {
   const base = document.createElement('canvas'); base.width = ow; base.height = oh;
   const bc = base.getContext('2d'); bc.imageSmoothingQuality = 'high';
   bc.drawImage(bmp, src.x, src.y, src.w, src.h, 0, 0, ow, oh);
-  if (!subject?.mask || strength <= 0) return base;
+  if (!subject?.mask || (strength <= 0 && dim <= 0)) return base;
 
-  const blurred = softCopy(base, ow, oh, 2 + strength / 100 * 16 * Math.max(0.5, ow / 600));
+  const blurred = softCopy(base, ow, oh, 2 + strength / 100 * 22 * Math.max(0.5, ow / 600));
+  if (dim > 0) { const bg = blurred.getContext('2d'); bg.fillStyle = `rgba(6,6,6,${dim / 100})`; bg.fillRect(0, 0, ow, oh); }   // приглушаем фон, чтобы флакон выделялся
   // мягкая маска предмета в координатах результата
   const m = subject.mask, mc = document.createElement('canvas'); mc.width = m.w; mc.height = m.h;
   const mctx = mc.getContext('2d'), img = mctx.createImageData(m.w, m.h);
@@ -182,22 +197,28 @@ export function cropImage(file) {
 <div class="crop-stage"><canvas></canvas></div>
 <label class="crop-zoom"><span>Масштаб кадра</span><input type="range" min="30" max="100" value="100" data-r="zoom"></label>
 <div class="crop-blur"><label class="crop-chk"><input type="checkbox" data-r="blurOn"> Размыть фон, чтобы флакон был виднее</label>
-<div data-r="blurRow" hidden class="crop-blur-in"><label class="crop-zoom"><span>Сила размытия</span><input type="range" min="10" max="100" value="60" data-r="blur"></label>
-<div class="seg2" role="radiogroup" aria-label="Контур флакона"><button type="button" data-c="auto" class="${box ? 'on' : ''}" ${box ? '' : 'disabled'}>Контур: авто</button><button type="button" data-c="manual" class="${box ? '' : 'on'}">Вручную</button></div>
-<div data-r="regionRow" ${box ? 'hidden' : ''} class="crop-blur-in"><p class="hint" style="margin:0">Перетащите пунктирную рамку на флакон и подгоните размер.</p><label class="crop-zoom"><span>Ширина</span><input type="range" min="8" max="100" data-r="rw"></label><label class="crop-zoom"><span>Высота</span><input type="range" min="8" max="100" data-r="rh"></label></div></div></div>
+<div data-r="blurRow" hidden class="crop-blur-in"><label class="crop-zoom"><span>Сила размытия</span><input type="range" min="10" max="100" value="70" data-r="blur"></label>
+<label class="crop-zoom"><span>Затемнение фона</span><input type="range" min="0" max="80" value="35" data-r="dim"></label>
+<div class="seg2" role="radiogroup" aria-label="Контур флакона"><button type="button" data-c="auto" ${box ? '' : 'disabled'}>Контур: авто</button><button type="button" data-c="manual">Вручную</button></div>
+<div data-r="regionRow" class="crop-blur-in"><p class="hint" style="margin:0">Перетащите пунктирную рамку на флакон и подгоните размер.</p><label class="crop-zoom"><span>Ширина</span><input type="range" min="8" max="100" data-r="rw"></label><label class="crop-zoom"><span>Высота</span><input type="range" min="8" max="100" data-r="rh"></label></div></div></div>
 <div class="crop-act"><button type="button" class="btn-ghost sm" data-a="auto">Найти заново</button><button type="button" class="btn-ghost sm" data-a="full">По центру</button><span class="sp"></span><button type="button" class="btn-ghost" data-a="cancel">Отмена</button><button type="button" class="btn" data-a="ok">Готово</button></div></div>`;
     document.body.append(el);
     const cv = el.querySelector('canvas'), ctx = cv.getContext('2d'), zoom = el.querySelector('[data-r="zoom"]');
     const blurOn = el.querySelector('[data-r="blurOn"]'), blurRow = el.querySelector('[data-r="blurRow"]'), blurR = el.querySelector('[data-r="blur"]');
     const regionRow = el.querySelector('[data-r="regionRow"]'), rwR = el.querySelector('[data-r="rw"]'), rhR = el.querySelector('[data-r="rh"]');
-    let manual = !box;
-    let region = box ? { x: box.x, y: box.y, w: box.w, h: box.h } : { x: W * 0.3, y: H * 0.2, w: W * 0.4, h: H * 0.6 };
+    const coverage = box?.mask ? box.mask.data.reduce((a, v) => a + v, 0) / box.mask.data.length : 0;
+    let manual = !box || coverage > 0.5;      // автоконтур почти на весь кадр — размывать нечего, предлагаем рамку вручную
+    let region = box && coverage <= 0.5 ? { x: box.x, y: box.y, w: box.w, h: box.h } : { x: W * 0.3, y: H * 0.15, w: W * 0.4, h: H * 0.7 };
     const subject = () => (manual ? { mask: rectMask(W, H, region) } : box);
     const syncRegionUi = () => { rwR.value = Math.round(region.w / W * 100); rhR.value = Math.round(region.h / H * 100); };
     syncRegionUi();
+    const paintContour = () => { el.querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', (x.dataset.c === 'manual') === manual)); regionRow.hidden = !manual; };
+    paintContour();
     let preview = null;
+    const dimR = el.querySelector('[data-r="dim"]');
     const strength = () => (blurOn?.checked ? Number(blurR.value) : 0);
-    const rebuild = () => { preview = strength() ? compose(bmp, subject(), strength(), { x: 0, y: 0, w: W, h: H }, cv.width, cv.height) : null; sync(); };
+    const dimVal = () => (blurOn?.checked ? Number(dimR.value) : 0);
+    const rebuild = () => { preview = strength() ? compose(bmp, subject(), strength(), { x: 0, y: 0, w: W, h: H }, cv.width, cv.height, dimVal()) : null; sync(); };
     let raf = 0; const rebuildSoon = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(rebuild); };
     const maxH = Math.min(innerHeight * 0.55, 560), maxWpx = Math.min(innerWidth - 56, 640);
     const s = Math.min(maxWpx / W, maxH / H);
@@ -239,9 +260,7 @@ export function cropImage(file) {
 
     blurOn?.addEventListener('change', () => { blurRow.hidden = !blurOn.checked; rebuild(); });
     el.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => {
-      manual = b.dataset.c === 'manual';
-      el.querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b));
-      regionRow.hidden = !manual; rebuild();
+      manual = b.dataset.c === 'manual'; paintContour(); rebuild();
     }));
     const resizeRegion = () => {
       const cx = region.x + region.w / 2, cy = region.y + region.h / 2;
@@ -250,7 +269,7 @@ export function cropImage(file) {
       rebuildSoon();
     };
     rwR.addEventListener('input', resizeRegion); rhR.addEventListener('input', resizeRegion);
-    blurR?.addEventListener('input', rebuildSoon);
+    blurR?.addEventListener('input', rebuildSoon); dimR?.addEventListener('input', rebuildSoon);
 
     const done = v => { removeEventListener('keydown', onKey); el.remove(); v === undefined ? resolve(null) : resolve(v); };
     const onKey = e => { if (e.key === 'Escape') done(null); };
@@ -264,7 +283,7 @@ export function cropImage(file) {
         const ow = Math.min(OUT_W, Math.round(r.w)), oh = Math.round(ow / RATIO);
         const out = document.createElement('canvas'); out.width = ow; out.height = oh;
         const o = out.getContext('2d'); o.imageSmoothingQuality = 'high';
-        o.drawImage(compose(bmp, subject(), strength(), { x: r.x, y: r.y, w: r.w, h: r.w / RATIO }, ow, oh), 0, 0);
+        o.drawImage(compose(bmp, subject(), strength(), { x: r.x, y: r.y, w: r.w, h: r.w / RATIO }, ow, oh, dimVal()), 0, 0);
         out.toBlob(b => done(b), 'image/jpeg', 0.92);
       }
     });
