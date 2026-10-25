@@ -117,3 +117,15 @@ select.input{appearance:none;-webkit-appearance:none}
 .krow .t b{font:500 19px/1.1 var(--serif)}
 .krow select{min-height:44px}
 @media (max-width:600px){.krow{grid-template-columns:44px minmax(0,1fr) 130px}.krow .badge-s{display:none}}
+
+/* обрезка фото */
+.crop-back{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:16px;animation:fadeB .25s ease both}
+.crop{background:#111110;border:1px solid var(--line2);border-radius:var(--r-lg);padding:20px;width:min(700px,100%);max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.crop-head{display:flex;flex-direction:column;gap:4px}
+.crop-head b{font:500 24px/1 var(--serif)}
+.crop-stage{display:flex;justify-content:center;background:#0a0a09;border-radius:var(--r-md);padding:10px}
+.crop-stage canvas{max-width:100%;touch-action:none;cursor:grab;border-radius:6px}
+.crop-zoom{display:flex;align-items:center;gap:14px;font:500 13px/1 var(--sans);color:#CFCAC0}
+.crop-zoom input{flex:1;accent-color:var(--gold)}
+.crop-act{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.crop-act .sp{flex:1}

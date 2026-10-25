@@ -1,5 +1,6 @@
 // Админка IHVA PARFUM: товары (цены, наличие, фото, показ/скрытие) и заявки. Без зависимостей.
 import { $, $$, esc, rub, svg, toast, plural } from './core.js';
+import { cropImage } from './imgcrop.js';
 
 const app = $('#app');
 const CATS = ['Мужская', 'Женская', 'Для всех', 'Нишевые'];
@@ -27,14 +28,11 @@ const note = (title, text, kind = 'ok') => toast({ kind, title, text, ttl: 3000 
 const minPrice = p => { const v = p.variants.filter(x => x.available); return v.length ? Math.min(...v.map(x => x.price)) : null; };
 const imgOf = p => p.image || PLACEHOLDER;
 
-/** Уменьшает фото до 1000 px в браузере и загружает на сервер. Возвращает путь вида /uploads/... */
+/** Открывает окно авто-обрезки (кадр 4:5 вокруг флакона) и загружает результат. Возвращает путь вида /uploads/... */
 async function uploadImage(file) {
   if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Нужна картинка JPG, PNG или WebP');
-  const bmp = await createImageBitmap(file);
-  const k = Math.min(1, 1000 / Math.max(bmp.width, bmp.height));
-  const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
-  cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
-  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.9));
+  const blob = await cropImage(file);
+  if (!blob) throw new Error('cancel');
   return (await api('upload', { method: 'POST', raw: { type: 'image/jpeg', data: blob } })).path;
 }
 
@@ -129,7 +127,7 @@ function openEditor(p) {
   el.innerHTML = `<div class="ed-back" data-close></div><form class="ed" role="dialog" aria-modal="true" aria-label="${isNew ? 'Новый товар' : 'Редактирование'}" novalidate>
 <div class="ed-head"><h2>${isNew ? 'Новый товар' : esc(d.name)}</h2><button type="button" class="ibtn" data-close aria-label="Закрыть">${svg('close')}</button></div>
 <div class="ed-body">
-<div class="ed-sec"><h3>Фото</h3><div class="photo"><img id="ph-img" src="${esc(imgOf(d))}" alt=""><div><label class="drop" id="drop"><input type="file" id="ph-file" accept="image/jpeg,image/png,image/webp" hidden>Нажмите или перетащите фото<br><span class="hint">JPG, PNG или WebP — сожмём автоматически. Лучше вертикальное 4:5</span></label></div></div></div>
+<div class="ed-sec"><h3>Фото</h3><div class="photo"><img id="ph-img" src="${esc(imgOf(d))}" alt=""><div><label class="drop" id="drop"><input type="file" id="ph-file" accept="image/jpeg,image/png,image/webp" hidden>Нажмите или перетащите фото<br><span class="hint">JPG, PNG или WebP. Мы сами найдём флакон и обрежем кадр 4:5 — останется проверить</span></label></div></div></div>
 <div class="ed-sec"><h3>Основное</h3>
 <div class="g2a"><div class="field"><label class="label" for="f-brand">Бренд</label><input id="f-brand" class="input" value="${esc(d.brand)}" maxlength="60"><span class="err" data-e="brand" hidden></span></div>
 <div class="field"><label class="label" for="f-name">Название</label><input id="f-name" class="input" value="${esc(d.name)}" maxlength="80"><span class="err" data-e="name" hidden></span></div></div>
@@ -178,7 +176,7 @@ function openEditor(p) {
     try {
       d.image = await uploadImage(file); $('#ph-img', el).src = d.image;
       note('Фото загружено', 'Не забудьте нажать «Сохранить»');
-    } catch (err) { if (err.message !== 'unauthorized') note('Не удалось загрузить фото', err.message, 'bad'); }
+    } catch (err) { if (!['unauthorized', 'cancel'].includes(err.message)) note('Не удалось загрузить фото', err.message, 'bad'); }
   }
   $('#ph-file', el).addEventListener('change', e => upload(e.target.files[0]));
   const drop = $('#drop', el);
@@ -295,7 +293,7 @@ function renderFormats() {
     const f = st.formats.find(x => x.vol === Number(card.dataset.vol)); let image = f.image;
     card.querySelector('input[type=file]').addEventListener('change', async e => {
       try { image = await uploadImage(e.target.files[0]); card.querySelector('img').src = image; note('Фото загружено', 'Нажмите «Сохранить»'); }
-      catch (err) { if (err.message !== 'unauthorized') note('Не удалось загрузить фото', err.message, 'bad'); }
+      catch (err) { if (!['unauthorized', 'cancel'].includes(err.message)) note('Не удалось загрузить фото', err.message, 'bad'); }
     });
     card.addEventListener('submit', async e => {
       e.preventDefault();
