@@ -1,5 +1,7 @@
 // Авто-обрезка фото флакона: находит предмет на снимке и предлагает кадр 4:5 вокруг него.
 // Всё считается в браузере (без сервера и библиотек). Кадр можно подвинуть и изменить масштаб.
+import { subjectAlpha, alphaBox } from './matting.js';
+
 const RATIO = 0.8;          // ширина / высота кадра (как у карточек магазина)
 const OUT_W = 1000;         // ширина готового фото, px (не больше исходного)
 
@@ -140,24 +142,32 @@ function softCopy(src, w, h, factor) {
 }
 
 /** Рисует фрагмент снимка src (в координатах исходника) размером ow×oh; при strength > 0 фон вне предмета размыт. */
-export function compose(bmp, subject, strength, src, ow, oh, dim = 0) {
+export function compose(bmp, subject, strength, src, ow, oh, dim = 0, studio = false) {
   const base = document.createElement('canvas'); base.width = ow; base.height = oh;
   const bc = base.getContext('2d'); bc.imageSmoothingQuality = 'high';
   bc.drawImage(bmp, src.x, src.y, src.w, src.h, 0, 0, ow, oh);
-  if (!subject?.mask || (strength <= 0 && dim <= 0)) return base;
+  if (!subject?.mask || (strength <= 0 && dim <= 0 && !studio)) return base;
 
-  const blurred = softCopy(base, ow, oh, 2 + strength / 100 * 22 * Math.max(0.5, ow / 600));
-  if (dim > 0) { const bg = blurred.getContext('2d'); bg.fillStyle = `rgba(6,6,6,${dim / 100})`; bg.fillRect(0, 0, ow, oh); }   // приглушаем фон, чтобы флакон выделялся
+  let blurred;
+  if (studio) {   // фон магазина: тёмный графит с мягким золотистым свечением
+    blurred = document.createElement('canvas'); blurred.width = ow; blurred.height = oh;
+    const g = blurred.getContext('2d'), grad = g.createRadialGradient(ow / 2, oh * 0.4, 0, ow / 2, oh * 0.4, Math.max(ow, oh) * 0.8);
+    grad.addColorStop(0, '#2a2620'); grad.addColorStop(0.55, '#14120f'); grad.addColorStop(1, '#0a0a09');
+    g.fillStyle = grad; g.fillRect(0, 0, ow, oh);
+  } else {
+    blurred = softCopy(base, ow, oh, 2 + strength / 100 * 22 * Math.max(0.5, ow / 600));
+  }
+  if (dim > 0 && !studio) { const bg = blurred.getContext('2d'); bg.fillStyle = `rgba(6,6,6,${dim / 100})`; bg.fillRect(0, 0, ow, oh); }   // приглушаем фон, чтобы флакон выделялся
   // мягкая маска предмета в координатах результата
   const m = subject.mask, mc = document.createElement('canvas'); mc.width = m.w; mc.height = m.h;
   const mctx = mc.getContext('2d'), img = mctx.createImageData(m.w, m.h);
-  for (let i = 0; i < m.w * m.h; i++) { img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = 255; img.data[i * 4 + 3] = m.data[i] ? 255 : 0; }
+  for (let i = 0; i < m.w * m.h; i++) { img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = 255; img.data[i * 4 + 3] = m.alpha ? m.alpha[i] : (m.data[i] ? 255 : 0); }
   mctx.putImageData(img, 0, 0);
   const sc = ow / src.w, W = bmp.width, H = bmp.height;
   const soft = document.createElement('canvas'); soft.width = ow; soft.height = oh;
   const sctx = soft.getContext('2d'); sctx.imageSmoothingQuality = 'high';
   sctx.drawImage(mc, 0, 0, m.w, m.h, (0 - src.x) * sc, (0 - src.y) * sc, W * sc, H * sc);
-  const feathered = softCopy(soft, ow, oh, Math.max(2, ow / 90));            // растушёвка края
+  const feathered = m.alpha ? soft : softCopy(soft, ow, oh, Math.max(2, ow / 90));            // растушёвка края
   const sharp = document.createElement('canvas'); sharp.width = ow; sharp.height = oh;
   const shc = sharp.getContext('2d'); shc.drawImage(base, 0, 0);
   shc.globalCompositeOperation = 'destination-in'; shc.drawImage(feathered, 0, 0);
@@ -199,7 +209,9 @@ export function cropImage(file) {
 <div class="crop-blur"><label class="crop-chk"><input type="checkbox" data-r="blurOn"> Размыть фон, чтобы флакон был виднее</label>
 <div data-r="blurRow" hidden class="crop-blur-in"><label class="crop-zoom"><span>Сила размытия</span><input type="range" min="10" max="100" value="70" data-r="blur"></label>
 <label class="crop-zoom"><span>Затемнение фона</span><input type="range" min="0" max="80" value="35" data-r="dim"></label>
-<div class="seg2" role="radiogroup" aria-label="Контур флакона"><button type="button" data-c="auto" ${box ? '' : 'disabled'}>Контур: авто</button><button type="button" data-c="manual">Вручную</button></div>
+<div class="seg2 seg3" role="radiogroup" aria-label="Контур флакона"><button type="button" data-c="ai">Нейросеть</button><button type="button" data-c="auto" ${box ? '' : 'disabled'}>Простой авто</button><button type="button" data-c="manual">Вручную</button></div>
+<p class="hint" data-r="aiStatus" style="margin:0" hidden></p>
+<div class="seg2" role="radiogroup" aria-label="Что делать с фоном"><button type="button" data-bg="blur" class="on">Размыть фон</button><button type="button" data-bg="studio">Тёмный фон магазина</button></div>
 <div data-r="regionRow" class="crop-blur-in"><p class="hint" style="margin:0">Перетащите пунктирную рамку на флакон и подгоните размер.</p><label class="crop-zoom"><span>Ширина</span><input type="range" min="8" max="100" data-r="rw"></label><label class="crop-zoom"><span>Высота</span><input type="range" min="8" max="100" data-r="rh"></label></div></div></div>
 <div class="crop-act"><button type="button" class="btn-ghost sm" data-a="auto">Найти заново</button><button type="button" class="btn-ghost sm" data-a="full">По центру</button><span class="sp"></span><button type="button" class="btn-ghost" data-a="cancel">Отмена</button><button type="button" class="btn" data-a="ok">Готово</button></div></div>`;
     document.body.append(el);
@@ -207,18 +219,20 @@ export function cropImage(file) {
     const blurOn = el.querySelector('[data-r="blurOn"]'), blurRow = el.querySelector('[data-r="blurRow"]'), blurR = el.querySelector('[data-r="blur"]');
     const regionRow = el.querySelector('[data-r="regionRow"]'), rwR = el.querySelector('[data-r="rw"]'), rhR = el.querySelector('[data-r="rh"]');
     const coverage = box?.mask ? box.mask.data.reduce((a, v) => a + v, 0) / box.mask.data.length : 0;
-    let manual = !box || coverage > 0.5;      // автоконтур почти на весь кадр — размывать нечего, предлагаем рамку вручную
+    let contour = !box || coverage > 0.5 ? 'manual' : 'auto';      // ai | auto | manual
+    let aiMask = null, studio = false, touched = false;
+
     let region = box && coverage <= 0.5 ? { x: box.x, y: box.y, w: box.w, h: box.h } : { x: W * 0.3, y: H * 0.15, w: W * 0.4, h: H * 0.7 };
-    const subject = () => (manual ? { mask: rectMask(W, H, region) } : box);
+    const subject = () => (contour === 'manual' ? { mask: rectMask(W, H, region) } : contour === 'ai' && aiMask ? { mask: aiMask } : box);
     const syncRegionUi = () => { rwR.value = Math.round(region.w / W * 100); rhR.value = Math.round(region.h / H * 100); };
     syncRegionUi();
-    const paintContour = () => { el.querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', (x.dataset.c === 'manual') === manual)); regionRow.hidden = !manual; };
+    const paintContour = () => { el.querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x.dataset.c === contour)); regionRow.hidden = contour !== 'manual'; };
     paintContour();
     let preview = null;
     const dimR = el.querySelector('[data-r="dim"]');
     const strength = () => (blurOn?.checked ? Number(blurR.value) : 0);
     const dimVal = () => (blurOn?.checked ? Number(dimR.value) : 0);
-    const rebuild = () => { preview = strength() ? compose(bmp, subject(), strength(), { x: 0, y: 0, w: W, h: H }, cv.width, cv.height, dimVal()) : null; sync(); };
+    const rebuild = () => { preview = strength() ? compose(bmp, subject(), strength(), { x: 0, y: 0, w: W, h: H }, cv.width, cv.height, dimVal(), studio) : null; sync(); };
     let raf = 0; const rebuildSoon = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(rebuild); };
     const maxH = Math.min(innerHeight * 0.55, 560), maxWpx = Math.min(innerWidth - 56, 640);
     const s = Math.min(maxWpx / W, maxH / H);
@@ -233,7 +247,7 @@ export function cropImage(file) {
       ctx.fillRect(0, 0, cv.width, y); ctx.fillRect(0, y + h, cv.width, cv.height - y - h);
       ctx.fillRect(0, y, x, h); ctx.fillRect(x + w, y, cv.width - x - w, h);
       ctx.strokeStyle = '#C6A15B'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-      if (blurOn?.checked && manual) { ctx.save(); ctx.setLineDash([6, 5]); ctx.strokeStyle = '#E5D1A1'; ctx.lineWidth = 2; ctx.strokeRect(region.x * s, region.y * s, region.w * s, region.h * s); ctx.restore(); }
+      if (blurOn?.checked && contour === 'manual') { ctx.save(); ctx.setLineDash([6, 5]); ctx.strokeStyle = '#E5D1A1'; ctx.lineWidth = 2; ctx.strokeRect(region.x * s, region.y * s, region.w * s, region.h * s); ctx.restore(); }
       ctx.strokeStyle = 'rgba(229,209,161,.35)'; ctx.lineWidth = 1;
       for (let i = 1; i < 3; i++) { ctx.beginPath(); ctx.moveTo(x + w * i / 3, y); ctx.lineTo(x + w * i / 3, y + h); ctx.moveTo(x, y + h * i / 3); ctx.lineTo(x + w, y + h * i / 3); ctx.stroke(); }
     }
@@ -243,14 +257,14 @@ export function cropImage(file) {
     cv.addEventListener('pointerdown', e => {
       cv.setPointerCapture(e.pointerId);
       const ix = e.offsetX / s, iy = e.offsetY / s;
-      const inRegion = blurOn?.checked && manual && ix >= region.x && ix <= region.x + region.w && iy >= region.y && iy <= region.y + region.h;
+      const inRegion = blurOn?.checked && contour === 'manual' && ix >= region.x && ix <= region.x + region.w && iy >= region.y && iy <= region.y + region.h;
       drag = { px: e.offsetX, py: e.offsetY, x: inRegion ? region.x : r.x, y: inRegion ? region.y : r.y, region: inRegion };
     });
     cv.addEventListener('pointermove', e => {
       if (!drag) return;
       const nx = drag.x + (e.offsetX - drag.px) / s, ny = drag.y + (e.offsetY - drag.py) / s;
       if (drag.region) { region.x = Math.min(Math.max(0, nx), W - region.w); region.y = Math.min(Math.max(0, ny), H - region.h); rebuildSoon(); }
-      else { r = clamp({ w: r.w, x: nx, y: ny }, W, H); sync(); }
+      else { touched = true; r = clamp({ w: r.w, x: nx, y: ny }, W, H); sync(); }
     });
     cv.addEventListener('pointerup', () => { drag = null; });
     zoom.addEventListener('input', () => {
@@ -260,7 +274,8 @@ export function cropImage(file) {
 
     blurOn?.addEventListener('change', () => { blurRow.hidden = !blurOn.checked; rebuild(); });
     el.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => {
-      manual = b.dataset.c === 'manual'; paintContour(); rebuild();
+      if (b.dataset.c === 'ai') return useAi();
+      contour = b.dataset.c; paintContour(); rebuild();
     }));
     const resizeRegion = () => {
       const cx = region.x + region.w / 2, cy = region.y + region.h / 2;
@@ -270,6 +285,37 @@ export function cropImage(file) {
     };
     rwR.addEventListener('input', resizeRegion); rhR.addEventListener('input', resizeRegion);
     blurR?.addEventListener('input', rebuildSoon); dimR?.addEventListener('input', rebuildSoon);
+
+    // нейросеть: грузится один раз (~15 МБ), потом выделение занимает 1–3 секунды
+    const aiStatus = el.querySelector('[data-r="aiStatus"]');
+    const say = t => { aiStatus.hidden = !t; aiStatus.textContent = t || ''; };
+    async function useAi() {
+      if (aiMask) { contour = 'ai'; paintContour(); rebuild(); return; }
+      say('Загружаем нейросеть (один раз, около 15 МБ) и выделяем флакон…');
+      el.querySelectorAll('[data-c]').forEach(x => { x.disabled = true; });
+      try {
+        const m = await subjectAlpha(bmp);
+        aiMask = m; contour = 'ai';
+        const hint = el.querySelector('.crop-head .hint'); if (hint) hint.textContent = 'Флакон выделен нейросетью. Можно подвинуть кадр.';
+        const ab = alphaBox(m, W, H);
+        if (ab && !touched) { r = frameFor(W, H, ab); }
+        say('');
+      } catch (err) {
+        say('Нейросеть не запустилась в этом браузере — используется простой режим. ' + (err?.message || ''));
+      } finally {
+        el.querySelectorAll('[data-c]').forEach(x => { x.disabled = x.dataset.c === 'auto' && !box; });
+        paintContour(); rebuild();
+      }
+    }
+    el.querySelectorAll('[data-bg]').forEach(b => b.addEventListener('click', () => {
+      studio = b.dataset.bg === 'studio';
+      el.querySelectorAll('[data-bg]').forEach(x => x.classList.toggle('on', x === b));
+      blurR.closest('.crop-zoom').hidden = studio; dimR.closest('.crop-zoom').hidden = studio;
+      rebuild();
+    }));
+    // первое включение размытия сразу запускает нейросеть — это самый точный контур
+    blurOn?.addEventListener('change', () => { if (blurOn.checked && !aiMask && !aiTried) { aiTried = true; useAi(); } });
+    let aiTried = false;
 
     const done = v => { removeEventListener('keydown', onKey); el.remove(); v === undefined ? resolve(null) : resolve(v); };
     const onKey = e => { if (e.key === 'Escape') done(null); };
@@ -283,7 +329,7 @@ export function cropImage(file) {
         const ow = Math.min(OUT_W, Math.round(r.w)), oh = Math.round(ow / RATIO);
         const out = document.createElement('canvas'); out.width = ow; out.height = oh;
         const o = out.getContext('2d'); o.imageSmoothingQuality = 'high';
-        o.drawImage(compose(bmp, subject(), strength(), { x: r.x, y: r.y, w: r.w, h: r.w / RATIO }, ow, oh, dimVal()), 0, 0);
+        o.drawImage(compose(bmp, subject(), strength(), { x: r.x, y: r.y, w: r.w, h: r.w / RATIO }, ow, oh, dimVal(), studio), 0, 0);
         out.toBlob(b => done(b), 'image/jpeg', 0.92);
       }
     });

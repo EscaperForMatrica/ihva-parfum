@@ -19,11 +19,11 @@ const MAX_BODY = 16 * 1024;
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-  '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8'
+  '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.wasm': 'application/wasm', '.onnx': 'application/octet-stream', '.md': 'text/plain; charset=utf-8'
 };
 
 const SECURITY_HEADERS = {
-  'content-security-policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+  'content-security-policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
   'x-frame-options': 'DENY',
@@ -92,7 +92,7 @@ export function createApp({ config, db: dbOverride, send } = {}) {
     const type = MIME[extname(file).toLowerCase()];
     if (!type) return false;
     const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
-    const immutable = /\.(woff2|jpg|jpeg|png|webp|svg)$/i.test(file);
+    const immutable = /\.(woff2|jpg|jpeg|png|webp|svg|wasm|onnx)$/i.test(file);
     const headers = { ...SECURITY_HEADERS, 'content-type': type, etag, 'cache-control': immutable ? 'public, max-age=604800' : 'no-cache' };
     if (req.headers['if-none-match'] === etag) { res.writeHead(304, headers); res.end(); return true; }
     res.writeHead(200, { ...headers, 'content-length': st.size });

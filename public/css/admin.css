@@ -150,3 +150,4 @@ select.input{appearance:none;-webkit-appearance:none}
 .seg2 button{min-height:40px;border-radius:var(--r-pill);border:1px solid var(--line2);background:transparent;color:#DCD7CD;font:500 13px/1 var(--sans);cursor:pointer}
 .seg2 button.on{border-color:var(--gold);background:rgba(198,161,91,.14);color:var(--champ)}
 .seg2 button[disabled]{opacity:.4;cursor:not-allowed}
+.seg3{grid-template-columns:repeat(3,1fr)}
