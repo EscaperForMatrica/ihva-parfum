@@ -1,4 +1,4 @@
-import { $, esc, rub, plural, initChrome, getProducts, cart, priceCart, toast, dismissToast, svg, fatal, imgOf, MAX_QTY } from './core.js';
+import { $, esc, rub, plural, initChrome, getProducts, cart, priceCart, toast, dismissToast, svg, fatal, imgOf, MAX_QTY, volLabel } from './core.js';
 
 initChrome();
 
@@ -12,9 +12,9 @@ function rowHTML(it) {
 <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
 <span class="c-brand">${esc(p.brand)}</span>
 <a href="${href}" style="font: 500 24px/1.1 'Cormorant Garamond', serif; color: #F5F1E8">${esc(p.name)}</a>
-<span class="small">Объём: <span style="color: #DCD7CD">${it.vol} мл</span> · ${rub(it.unit)}${it.oldUnit ? ` <s class="old">${rub(it.oldUnit)}</s>` : ''} / шт.</span>
+<span class="small">${it.vol === 0 ? 'Без разлива' : 'Объём'}: <span style="color: #DCD7CD">${volLabel(p, it.vol)}</span> · ${rub(it.unit)}${it.oldUnit ? ` <s class="old">${rub(it.oldUnit)}</s>` : ''} / шт.</span>
 </div>
-<div class="r-qty"><div class="stepper sm" role="group" aria-label="Количество ${esc(p.name)}, ${it.vol} мл">
+<div class="r-qty"><div class="stepper sm" role="group" aria-label="Количество ${esc(p.name)}, ${volLabel(p, it.vol)}">
 <button type="button" data-act="dec" data-key="${esc(key)}" ${it.qty <= 1 ? 'disabled' : ''} aria-label="Уменьшить">${svg('minus', { sw: 1.6 })}</button>
 <output>${it.qty}</output>
 <button type="button" data-act="inc" data-key="${esc(key)}" ${it.qty >= MAX_QTY ? 'disabled' : ''} aria-label="Увеличить">${svg('plus', { sw: 1.6 })}</button></div></div>
@@ -78,7 +78,7 @@ body.addEventListener('click', e => {
   else if (b.dataset.act === 'dec') cart.setQty(id, v, line.qty - 1);
   else if (b.dataset.act === 'rm') {
     const removed = cart.remove(id, v), p = products.find(x => x.id === id);
-    toast({ kind: 'neutral', title: 'Товар удалён', text: `${p.brand} — ${p.name}, ${v} мл`, ttl: 4500, above: matchMedia('(max-width: 600px)').matches,
+    toast({ kind: 'neutral', title: 'Товар удалён', text: `${p.brand} — ${p.name}, ${volLabel(p, v)}`, ttl: 4500, above: matchMedia('(max-width: 600px)').matches,
       action: { label: 'Вернуть', onClick: () => cart.restore(removed) } });
   }
 });

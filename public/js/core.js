@@ -44,6 +44,8 @@ export function getProducts() {
 export const site = (() => { try { return JSON.parse(document.getElementById('site-data')?.textContent || '{}'); } catch { return {}; } })();
 /** Ссылка в мессенджер менеджера с готовым текстом сообщения. */
 export const waLink = text => site.whatsapp ? `${site.whatsapp}?text=${encodeURIComponent(text)}` : '#';
+/** Подпись объёма: 0 — целый флакон без разлива. */
+export const volLabel = (p, vol) => (vol === 0 ? `Флакон ${p.bottleMl} мл` : `${vol} мл`);
 export const findVariant = (p, vol) => p.variants.find(v => v.vol === vol);
 export const availableVariants = p => p.variants.filter(v => v.available);
 export const inStock = p => availableVariants(p).length > 0;
@@ -186,7 +188,7 @@ export function cardHTML(p, { added = false } = {}) {
 <a href="${href}" class="c-name">${esc(p.name)}</a>
 <div class="c-meta">${esc(metaOf(p))}</div>
 <div class="c-row">
-<div class="c-pricebox" style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap"><span class="price">${min ? 'от ' + rub(min.price) : esc(rub(p.variants[0].price))}</span>${oldPriceHTML(min)}<span class="small">${min ? min.vol + ' мл' : ''}</span></div>
+<div class="c-pricebox" style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap"><span class="price">${min ? 'от ' + rub(min.price) : esc(rub(p.variants[0].price))}</span>${oldPriceHTML(min)}<span class="small">${min ? volLabel(p, min.vol) : ''}</span></div>
 ${action}
 </div>
 </div>
@@ -203,7 +205,7 @@ export function bindCards(root, getProducts_, { onChange } = {}) {
       const v = p && minVariant(p);
       if (!v) return;
       cart.add(p.id, v.vol, 1);
-      toast({ img: imgOf(p), title: 'Добавлено в корзину', text: `${p.brand} — ${p.name}, ${v.vol} мл`, action: { label: 'Корзина', href: '/cart' } });
+      toast({ img: imgOf(p), title: 'Добавлено в корзину', text: `${p.brand} — ${p.name}, ${volLabel(p, v.vol)}`, action: { label: 'Корзина', href: '/cart' } });
       const card = addBtn.closest('.card');
       card?.querySelectorAll('[data-add]').forEach(b => markAdded(b));
       clearTimeout(doneTimers.get(p.id));

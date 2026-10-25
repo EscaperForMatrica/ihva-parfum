@@ -27,6 +27,7 @@ async function api(path, { method = 'GET', body, raw } = {}) {
 const note = (title, text, kind = 'ok') => toast({ kind, title, text, ttl: 3000 });
 const minPrice = p => { const v = p.variants.filter(x => x.available); return v.length ? Math.min(...v.map(x => x.price)) : null; };
 const imgOf = p => p.image || PLACEHOLDER;
+const volName = (p, vol) => (vol === 0 ? `Флакон ${p.bottleMl} мл` : `${vol} мл`);
 
 /** Открывает окно авто-обрезки (кадр 4:5 вокруг флакона) и загружает результат. Возвращает путь вида /uploads/... */
 async function uploadImage(file) {
@@ -87,7 +88,7 @@ function rowHTML(p) {
   return `<div class="prow ${p.hidden ? 'hid' : ''}" data-id="${esc(p.id)}">
 <img src="${esc(imgOf(p))}" alt="" loading="lazy">
 <div class="t"><small>${esc(p.brand)}</small><b>${esc(p.name)}</b>
-<div class="vpills" aria-label="Объёмы: нажмите, чтобы включить или выключить">${p.variants.map(v => `<button type="button" class="vpill ${v.available ? '' : 'off'}" data-toggle="${v.vol}" title="${v.available ? 'В наличии — нажмите, чтобы убрать' : 'Нет в наличии — нажмите, чтобы вернуть'}">${v.vol} мл<i>${rub(v.price)}</i></button>`).join('')}</div></div>
+<div class="vpills" aria-label="Объёмы: нажмите, чтобы включить или выключить">${p.variants.map(v => `<button type="button" class="vpill ${v.available ? '' : 'off'} ${v.vol === 0 ? 'full' : ''}" data-toggle="${v.vol}" title="${v.available ? 'В наличии — нажмите, чтобы убрать' : 'Нет в наличии — нажмите, чтобы вернуть'}">${esc(volName(p, v.vol))}<i>${rub(v.price)}</i></button>`).join('')}</div></div>
 <div class="price">${p.hidden ? '<span class="badge-s">Скрыт</span>' : oos ? '<span class="badge-s bad">Нет в наличии</span>' : `<span class="badge-s ok">от ${rub(m)}</span>`}${p.salePercent ? ` <span class="badge-s gold">−${p.salePercent}%</span>` : ''}${p.kind ? ` <span class="badge-s">${KINDS[p.kind]}</span>` : ''}</div>
 <div style="display:flex;gap:10px;align-items:center"><button type="button" class="sw ${p.hidden ? '' : 'on'}" data-hide role="switch" aria-checked="${!p.hidden}" aria-label="Показывать на сайте" title="${p.hidden ? 'Скрыт с сайта' : 'Показан на сайте'}"></button>
 <button type="button" class="btn-ghost sm" data-edit>Изменить</button></div></div>`;
@@ -103,7 +104,7 @@ async function onListClick(e) {
       const vol = Number(e.target.closest('[data-toggle]').dataset.toggle);
       const next = { ...p, variants: p.variants.map(v => v.vol === vol ? { ...v, available: !v.available } : v) };
       await api('products/' + p.id, { method: 'PUT', body: next });
-      note(next.variants.find(v => v.vol === vol).available ? 'Объём в наличии' : 'Объём убран', `${p.name}, ${vol} мл`);
+      note(next.variants.find(v => v.vol === vol).available ? 'Объём в наличии' : 'Объём убран', `${p.name}, ${volName(p, vol)}`);
     } else if (e.target.closest('[data-hide]')) {
       await api('products/' + p.id, { method: 'PUT', body: { ...p, hidden: !p.hidden } });
       note(p.hidden ? 'Показан на сайте' : 'Скрыт с сайта', p.name);
@@ -115,7 +116,7 @@ async function onListClick(e) {
 // ---------- редактор товара ----------
 function blank() {
   return { brand: '', name: '', type: 'Eau de Parfum', gender: 'Для всех', cats: ['Для всех'], family: 'Восточные', tag: '', popularity: 50, description: '', image: null, hidden: false,
-    kind: '', discount: null, notes: null, longevity: '', audience: '', brandInfo: '', variants: VOLS.map(vol => ({ vol, price: '', available: vol !== 6 })) };
+    kind: '', discount: null, bottleMl: '', notes: null, longevity: '', audience: '', brandInfo: '', variants: VOLS.map(vol => ({ vol, price: '', available: vol !== 6 })) };
 }
 
 function openEditor(p) {
@@ -142,6 +143,10 @@ function openEditor(p) {
 <div class="ed-sec"><h3>Цены и наличие</h3><p class="hint" style="margin:0">Цена за один флакон выбранного объёма. Снимите галочку, если объёма нет в наличии.</p>
 <div id="vrows">${d.variants.map(v => `<div class="vrow"><b>${v.vol} мл</b><div class="field"><input class="input" inputmode="numeric" data-price="${v.vol}" value="${v.price ?? ''}" placeholder="Цена, ₽" aria-label="Цена ${v.vol} мл"><span class="err" data-e="price_${v.vol}" hidden></span></div><label class="chk"><input type="checkbox" data-avail="${v.vol}" ${v.available ? 'checked' : ''}>В наличии</label></div>`).join('')}</div>
 <button type="button" class="lnk" id="auto" style="align-self:flex-start">Рассчитать остальные цены от 3 мл</button></div>
+<div class="ed-sec"><h3>Целый флакон <em style="text-transform:none;letter-spacing:0;color:var(--muted)">— без разлива</em></h3><p class="hint" style="margin:0">Если продаёте оригинальный флакон целиком, укажите объём и цену. Пустая цена — этой позиции на сайте не будет.</p>
+<div class="vrow" style="grid-template-columns:110px 1fr auto"><div class="field"><input class="input" id="f-bml" inputmode="numeric" value="${d.bottleMl || ''}" placeholder="Объём, мл" aria-label="Объём флакона, мл"><span class="err" data-e="bottleMl" hidden></span></div>
+<div class="field"><input class="input" inputmode="numeric" data-price="0" value="${d.variants.find(v => v.vol === 0)?.price ?? ''}" placeholder="Цена флакона, ₽" aria-label="Цена целого флакона"><span class="err" data-e="price_0" hidden></span></div>
+<label class="chk"><input type="checkbox" data-avail="0" ${d.variants.find(v => v.vol === 0)?.available !== false ? 'checked' : ''}>В наличии</label></div></div>
 <div class="ed-sec"><h3>Показ на сайте</h3><label class="vrow" style="grid-template-columns:auto 1fr;cursor:pointer"><button type="button" class="sw ${d.hidden ? '' : 'on'}" id="f-vis" role="switch" aria-checked="${!d.hidden}"></button><span id="f-vis-t" style="font:500 14px/1.3 var(--sans)">${d.hidden ? 'Скрыт — покупатели не видят этот товар' : 'Показан в каталоге'}</span></label></div>
 <details class="opt" ${d.notes || d.longevity || d.audience || d.brandInfo ? 'open' : ''}><summary>Ноты и дополнительные сведения</summary><div class="ed-sec">
 <div class="field"><label class="label" for="n-top">Верхние ноты</label><input id="n-top" class="input" value="${esc(n.top || '')}" maxlength="120"></div>
@@ -196,7 +201,8 @@ function openEditor(p) {
       kind: $('#f-kind', el).value, discount: { percent: Number($('#f-sale', el).value) || 0, until: $('#f-sale-until', el).value }, family: $('#f-family', el).value, tag: $('#f-tag', el).value, description: $('#f-desc', el).value, image: d.image, hidden: d.hidden,
       popularity: Number($('#f-pop', el).value) || 50, longevity: $('#f-long', el).value, audience: $('#f-aud', el).value, brandInfo: $('#f-bi', el).value,
       notes: { top: $('#n-top', el).value, heart: $('#n-heart', el).value, base: $('#n-base', el).value },
-      variants: VOLS.map(vol => ({ vol, price: Number($(`[data-price="${vol}"]`, el).value.replace(/\s/g, '')), available: $(`[data-avail="${vol}"]`, el).checked }))
+      bottleMl: Number($('#f-bml', el).value) || 0,
+      variants: [...VOLS, 0].map(vol => ({ vol, price: Number($(`[data-price="${vol}"]`, el).value.replace(/\s/g, '')), available: $(`[data-avail="${vol}"]`, el).checked }))
     };
     $$('[data-e]', el).forEach(x => { x.hidden = true; });
     const btn = $('#save', el); btn.disabled = true; btn.textContent = 'Сохраняем…';
@@ -225,7 +231,7 @@ ${list.length ? list.map(o => {
     return `<article class="ord ${o.status === 'done' ? 'done' : ''}" data-no="${esc(o.orderNo)}">
 <div class="ord-top"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b>№ ${esc(o.orderNo)}</b><span class="hint">${d}</span>${o.status === 'done' ? '<span class="badge-s ok">Выполнена</span>' : '<span class="badge-s gold">Новая</span>'}${o.tgStatus === 'sent' ? '' : '<span class="badge-s bad">Не ушла в Telegram</span>'}</div><b style="color:var(--champ);font-size:18px">${rub(o.total)}</b></div>
 <div class="ord-meta"><span><b>${esc(o.name)}</b></span><a href="tel:${esc(tel)}">${esc(o.phone)}</a><span>${esc(o.city)}</span><span>Связь: ${METHOD[o.method] || esc(o.method)}${o.contact ? ' — ' + esc(o.contact) : ''}</span></div>
-<ul>${o.items.map(i => `<li><span>${esc(i.brand)} — ${esc(i.name)}, ${i.vol} мл × ${i.qty}</span><span>${rub(i.sum)}</span></li>`).join('')}</ul>
+<ul>${o.items.map(i => `<li><span>${esc(i.brand)} — ${esc(i.name)}, ${esc(i.volLabel || i.vol + ' мл')} × ${i.qty}</span><span>${rub(i.sum)}</span></li>`).join('')}</ul>
 ${o.comment ? `<div class="hint">Комментарий: ${esc(o.comment)}</div>` : ''}
 <div class="ord-act">${o.status === 'done' ? '<button class="btn-ghost sm" data-st="new">Вернуть в новые</button>' : '<button class="btn sm" data-st="done">Отметить выполненной</button>'}${o.tgStatus === 'sent' ? '' : '<button class="btn-ghost sm" data-resend>Отправить в Telegram ещё раз</button>'}</div></article>`;
   }).join('') : '<div class="empty">Заявок пока нет</div>'}`);

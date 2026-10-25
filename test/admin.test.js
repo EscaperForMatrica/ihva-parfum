@@ -223,3 +223,40 @@ test('скидки по видам: витрина, расчёт заказа, T
   assert.equal((await (await fetch(`${base}/api/products`)).json()).find(z => z.id === 'xerjoff').variants[0].oldPrice, undefined);
   assert.equal((await call('products/xerjoff', { method: 'PUT', body: { ...p, discount: { percent: 120 } } })).status, 400);
 });
+
+test('целый флакон без разлива: цена, наличие, заказ, Telegram, скидка', async () => {
+  await login();
+  const x = (await (await call('products')).json()).find(p => p.id === 'xerjoff');
+  const withFull = (price, ml, available = true) => ({ ...x, bottleMl: ml, variants: [...x.variants.filter(v => v.vol > 0), { vol: 0, price, available }] });
+  // цена без объёма флакона — ошибка
+  const bad = await call('products/xerjoff', { method: 'PUT', body: withFull(15900, 0) });
+  assert.equal(bad.status, 400); assert.ok((await bad.json()).fields.bottleMl);
+  assert.equal((await call('products/xerjoff', { method: 'PUT', body: withFull(15900, 100) })).status, 200);
+
+  const pub = (await (await fetch(`${base}/api/products`)).json()).find(p => p.id === 'xerjoff');
+  assert.equal(pub.bottleMl, 100);
+  const full = pub.variants.find(v => v.vol === 0);
+  assert.deepEqual([full.price, full.available], [15900, true]);
+  assert.equal(Math.min(...pub.variants.filter(v => v.available).map(v => v.price)), 990);   // «от» не зависит от флакона
+
+  const send = body => fetch(`${base}/api/orders`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(async r => [r.status, await r.json()]);
+  const [st, r] = await send(order([{ id: 'xerjoff', vol: 0, qty: 1 }, { id: 'xerjoff', vol: 3, qty: 1 }]));
+  assert.equal(st, 200);
+  assert.equal(r.order.total, 15900 + 990);
+  assert.ok(r.order.items.some(i => i.volLabel === 'Флакон 100 мл'));
+  assert.match(mock.messages.at(-1).text, /Purple Accento, Флакон 100 мл × 1 — 15 900 ₽/);
+
+  // скидка действует и на флакон
+  await call('products/xerjoff/kind', { method: 'PUT', body: { kind: 'original' } });
+  await call('discounts', { method: 'PUT', body: { original: { percent: 10, active: true }, oil: {} } });
+  const d = (await (await fetch(`${base}/api/products`)).json()).find(p => p.id === 'xerjoff').variants.find(v => v.vol === 0);
+  assert.deepEqual([d.price, d.oldPrice], [14310, 15900]);
+
+  // нет в наличии → заказ отклоняется; пустая цена → позиции нет вообще
+  await call('discounts', { method: 'PUT', body: { original: { percent: 0, active: false }, oil: {} } });
+  await call('products/xerjoff', { method: 'PUT', body: withFull(15900, 100, false) });
+  assert.equal((await send(order([{ id: 'xerjoff', vol: 0, qty: 1 }], '8 928 000 00 01')))[0], 400);
+  await call('products/xerjoff', { method: 'PUT', body: { ...x, variants: x.variants.filter(v => v.vol > 0) } });
+  assert.ok(!(await (await fetch(`${base}/api/products`)).json()).find(p => p.id === 'xerjoff').variants.some(v => v.vol === 0));
+  assert.equal((await send(order([{ id: 'xerjoff', vol: 0, qty: 1 }], '8 928 000 00 02')))[0], 400);
+});

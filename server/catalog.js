@@ -149,12 +149,22 @@ export function validateProduct(body, existing = {}) {
   v.discount = dp > 0 ? { percent: dp, until: du } : null;
 
   const incoming = new Map((Array.isArray(body.variants) ? body.variants : []).map(x => [Number(x.vol), x]));
+  // целый флакон (без разлива): vol = 0, размер флакона — bottleMl. Необязателен: нет цены — нет позиции.
+  const full = incoming.get(0) || {};
+  const fullPrice = Number(full.price) || 0;
+  const bottleMl = Number(body.bottleMl) || 0;
+  if (fullPrice) {
+    if (!Number.isInteger(fullPrice) || fullPrice < 1 || fullPrice > 5_000_000) e.price_0 = 'Укажите цену флакона';
+    if (!Number.isInteger(bottleMl) || bottleMl < 5 || bottleMl > 1000) e.bottleMl = 'Объём флакона, мл (5–1000)';
+  }
+  v.bottleMl = fullPrice && !e.bottleMl ? bottleMl : null;
   v.variants = VOLS.map(vol => {
     const x = incoming.get(vol) || {};
     const price = Number(x.price);
     if (!Number.isInteger(price) || price < 1 || price > 1_000_000) { e[`price_${vol}`] = 'Укажите цену'; }
     return { vol, price, available: Boolean(x.available), priceSource: 'admin' };
   });
+  if (fullPrice && !e.price_0 && !e.bottleMl) v.variants.push({ vol: 0, price: fullPrice, available: Boolean(full.available), priceSource: 'admin' });
   return { ok: Object.keys(e).length === 0, errors: e, value: v };
 }
 

@@ -328,3 +328,13 @@ body.has-cartbar{padding-bottom:88px}
 .sale-pill{display:inline-flex;align-items:center;min-height:26px;padding:0 12px;border-radius:var(--r-pill);background:rgba(198,161,91,.16);border:1px solid var(--gold);color:var(--champ);font:600 12px/1 var(--sans);letter-spacing:.04em}
 .c-sale{position:absolute;left:14px;bottom:14px;z-index:2;min-height:28px;padding:0 12px;display:inline-flex;align-items:center;border-radius:var(--r-pill);background:var(--gold);color:var(--black);font:700 12px/1 var(--sans);letter-spacing:.04em;box-shadow:0 8px 22px -8px rgba(0,0,0,.7)}
 @media (max-width:600px){.c-sale{left:8px;bottom:8px;min-height:24px;padding:0 9px;font-size:11px}}
+
+/* целый флакон */
+#full-wrap{margin-top:8px}
+.vol.full{width:100%;flex-direction:row;justify-content:space-between;align-items:center;text-align:left;padding:12px 16px;min-height:60px;gap:12px}
+.vol.full .full-t{display:flex;flex-direction:column;gap:4px}
+.vol.full .full-t b{font:600 15px/1.2 var(--sans)}
+.vol.full .full-t em{font:400 12px/1.2 var(--sans);color:var(--muted);font-style:normal}
+.vol.full .full-p{font:600 16px/1.1 var(--sans);color:var(--champ);text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.vol.full.na .full-p{font-weight:400;color:var(--muted)}
+.vol.full.na b{text-decoration:line-through;text-decoration-color:var(--muted)}

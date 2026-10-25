@@ -1,4 +1,4 @@
-import { $, $$, esc, rub, oldPriceHTML, initChrome, getProducts, cart, favs, toast, svg, fatal, site, waLink, imgOf, metaOf, findVariant, availableVariants, inStock, minVariant, MAX_QTY } from './core.js';
+import { $, $$, esc, rub, oldPriceHTML, initChrome, getProducts, cart, favs, toast, svg, fatal, site, waLink, imgOf, metaOf, findVariant, availableVariants, inStock, minVariant, MAX_QTY, volLabel } from './core.js';
 
 initChrome();
 
@@ -22,7 +22,7 @@ function relatedCard(x) {
   return `<article class="card">
 <a href="${href}" class="c-img" aria-label="${esc(x.brand + ' ' + x.name)}"><img src="${esc(imgOf(x))}" alt="Флакон ${esc(x.brand + ' ' + x.name)}" loading="lazy"></a>
 <div class="c-body"><div class="c-brand">${esc(x.brand)}</div><a href="${href}" class="c-name">${esc(x.name)}</a><div class="c-meta">${esc(metaOf(x))}</div>
-<div class="c-row"><div style="display: flex; align-items: baseline; gap: 8px"><span class="price">${min ? 'от ' + rub(min.price) : 'нет в наличии'}</span>${oldPriceHTML(min)}<span class="small">${min ? min.vol + ' мл' : ''}</span></div><a href="${href}" class="btn-ghost sm">Подробнее</a></div></div></article>`;
+<div class="c-row"><div style="display: flex; align-items: baseline; gap: 8px"><span class="price">${min ? 'от ' + rub(min.price) : 'нет в наличии'}</span>${oldPriceHTML(min)}<span class="small">${min ? volLabel(x, min.vol) : ''}</span></div><a href="${href}" class="btn-ghost sm">Подробнее</a></div></div></article>`;
 }
 
 function build(products) {
@@ -65,6 +65,7 @@ ${oos ? '<span class="c-tag" style="top: 20px; left: 20px">Нет в налич�
 <div style="display: flex; flex-direction: column; gap: 12px">
 <div style="display: flex; justify-content: space-between; align-items: baseline"><span class="label" id="vol-label">Объём</span><span class="small" id="vol-hint"></span></div>
 <div class="vgrid" id="vols" role="radiogroup" aria-labelledby="vol-label"></div>
+<div id="full-wrap" role="radiogroup" aria-label="Целый флакон"></div>
 </div>
 ${oos ? `<div class="panel" style="padding: 20px; display: flex; flex-direction: column; gap: 12px"><b style="font: 600 15px/1.3 Manrope, sans-serif">Сейчас нет в наличии</b><span class="small">Напишите менеджеру — сообщим, когда аромат появится.</span><div><a href="${esc(ask)}" class="btn-ghost sm" target="_blank" rel="noopener">Спросить менеджера о поступлении</a></div></div>` : `
 <div class="pd-buy" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap">
@@ -106,7 +107,7 @@ function paint() {
   const v = findVariant(p, state.vol), oos = !inStock(p);
   const main = $('#main-img');
   const gallery = [{ src: imgOf(p), alt: `Флакон ${p.brand} ${p.name}` }];
-  const f = (site.formats || []).find(x => x.vol === state.vol);
+  const f = state.vol ? (site.formats || []).find(x => x.vol === state.vol) : null;
   if (f) gallery.push({ src: `${f.image}`, alt: `Формат ${f.vol} мл` });
   if (state.img >= gallery.length) state.img = 0;
   if (main.getAttribute('src') !== gallery[state.img].src) {
@@ -118,23 +119,25 @@ function paint() {
   $('#dots-m').innerHTML = gallery.map((g, i) => `<button type="button" data-img="${i}" aria-label="${esc(g.alt)}"><span class="pdot ${i === state.img ? 'on' : ''}"></span></button>`).join('');
 
   const active = document.activeElement?.dataset?.vol;
-  $('#vols').innerHTML = p.variants.map(x => {
+  $('#vols').innerHTML = p.variants.filter(x => x.vol > 0).map(x => {
     const on = x.vol === state.vol, na = !x.available;
     return `<button type="button" class="vol ${na ? 'na' : on ? 'on' : ''}" data-vol="${x.vol}" ${na ? 'disabled' : ''} role="radio" aria-checked="${on && !na}" aria-label="${x.vol} мл, ${na ? 'нет в наличии' : rub(x.price)}"><b>${x.vol} мл</b><span>${na ? 'нет' : rub(x.price)}</span>${!na && x.oldPrice ? `<s class="old old-sm">${rub(x.oldPrice)}</s>` : ''}</button>`;
   }).join('');
-  if (active) $(`#vols [data-vol="${active}"]`)?.focus();
+  const fullV = findVariant(p, 0);
+  $('#full-wrap').innerHTML = fullV ? `<button type="button" class="vol full ${!fullV.available ? 'na' : state.vol === 0 ? 'on' : ''}" data-vol="0" ${!fullV.available ? 'disabled' : ''} role="radio" aria-checked="${state.vol === 0 && fullV.available}"><span class="full-t"><b>Целый флакон ${p.bottleMl} мл</b><em>без разлива, в упаковке</em></span><span class="full-p">${!fullV.available ? 'нет' : rub(fullV.price)}${fullV.available && fullV.oldPrice ? `<s class="old old-sm">${rub(fullV.oldPrice)}</s>` : ''}</span></button>` : '';
+  if (active) $(`#vols [data-vol="${active}"], #full-wrap [data-vol="${active}"]`)?.focus();
 
   if (oos) {
     $('#price').textContent = 'Нет в наличии'; $('#price').style.fontSize = '28px';
     $('#price-note').textContent = '';
     return;
   }
-  $('#vol-hint').textContent = hint[state.vol] || '';
+  $('#vol-hint').textContent = state.vol === 0 ? 'Оригинальный флакон без разлива' : (hint[state.vol] || '');
   const total = v.price * state.qty;
   $('#price').textContent = rub(total);
   const oldEl = $('#price-old'); oldEl.hidden = !v.oldPrice; oldEl.textContent = v.oldPrice ? rub(v.oldPrice * state.qty) : '';
   const pill = $('#sale-pill'); pill.hidden = !p.sale; pill.textContent = p.sale ? `−${p.sale.percent}%${p.sale.until ? ' до ' + p.sale.until.split('-').reverse().join('.') : ''}` : '';
-  const note = `за ${state.vol} мл` + (state.qty > 1 ? ` × ${state.qty}` : '');
+  const note = (state.vol === 0 ? `за ${volLabel(p, 0).toLowerCase()}` : `за ${state.vol} мл`) + (state.qty > 1 ? ` × ${state.qty}` : '');
   $('#price-note').textContent = note;
   $('#qty').textContent = state.qty;
   $('#dec').disabled = state.qty <= 1;
@@ -144,7 +147,7 @@ function paint() {
   $('#add').innerHTML = inner;
   $('#bar-add').innerHTML = `<span>${state.justAdded ? 'Добавлено' : 'Добавить в корзину'}</span>`;
   $('#bar-price').textContent = rub(total);
-  $('#bar-note').textContent = `${state.vol} мл × ${state.qty}`;
+  $('#bar-note').textContent = `${volLabel(p, state.vol)} × ${state.qty}`;
   const fav = favs.has(p.id), fb = $('#fav');
   fb.classList.toggle('on', fav); fb.setAttribute('aria-pressed', fav);
 }
@@ -154,7 +157,7 @@ function add() {
   if (!v?.available) return;
   cart.add(p.id, state.vol, state.qty);
   state.justAdded = true;
-  toast({ img: imgOf(p), title: 'Добавлено в корзину', text: `${p.name}, ${state.vol} мл × ${state.qty}`, action: { label: 'Корзина', href: '/cart' }, above: matchMedia('(max-width: 600px)').matches });
+  toast({ img: imgOf(p), title: 'Добавлено в корзину', text: `${p.name}, ${volLabel(p, state.vol)} × ${state.qty}`, action: { label: 'Корзина', href: '/cart' }, above: matchMedia('(max-width: 600px)').matches });
   clearTimeout(addTimer);
   addTimer = setTimeout(() => { state.justAdded = false; paint(); }, 2600);
   paint();
@@ -167,14 +170,14 @@ try {
   if (!p) { location.replace('/404'); throw new Error('not found'); }
   hint = Object.fromEntries((site.formats || []).map(f => [f.vol, f.hint]));
   const want = Number(new URLSearchParams(location.search).get('vol'));
-  const first = availableVariants(p)[0];
+  const first = availableVariants(p).find(v => v.vol > 0) || availableVariants(p)[0];
   state.vol = availableVariants(p).some(v => v.vol === want) ? want : (first ? first.vol : p.variants[0].vol);
   build(products);
   paint();
 
   root.addEventListener('click', e => {
     const vol = e.target.closest('[data-vol]');
-    if (vol && !vol.disabled) { state.vol = Number(vol.dataset.vol); state.img = 1; paint(); return; }
+    if (vol && !vol.disabled) { state.vol = Number(vol.dataset.vol); state.img = state.vol ? 1 : 0; paint(); return; }
     const img = e.target.closest('[data-img]');
     if (img) { state.img = Number(img.dataset.img); paint(); return; }
     if (e.target.closest('#dec')) { state.qty = Math.max(1, state.qty - 1); paint(); return; }

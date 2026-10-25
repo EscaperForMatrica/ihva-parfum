@@ -1,4 +1,4 @@
-import { $, $$, esc, rub, plural, initChrome, getProducts, cart, priceCart, toast, dismissToast, svg, fatal, imgOf, site, waLink } from './core.js';
+import { $, $$, esc, rub, plural, initChrome, getProducts, cart, priceCart, toast, dismissToast, svg, fatal, imgOf, site, waLink, volLabel } from './core.js';
 
 initChrome();
 
@@ -49,7 +49,7 @@ function summaryHTML({ items, total }) {
   return `<aside class="co-side panel" style="padding: 28px; display: flex; flex-direction: column; gap: 20px" aria-label="Состав заказа">
 <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 class="display" style="font-size: 28px">Ваш заказ</h2><a href="/cart" class="small" style="color: #E5D1A1">Изменить</a></div>
 <div style="display: flex; flex-direction: column; gap: 16px">
-${items.map(it => `<div class="co-item"><img src="${esc(imgOf(it.product))}" alt="" width="56" height="70"><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0"><span style="font: 500 19px/1.1 'Cormorant Garamond', serif">${esc(it.product.name)}</span><span class="small" style="font-size: 12.5px">${esc(it.product.brand)} · ${it.vol} мл × ${it.qty}${it.oldUnit ? ` · скидка ${it.product.sale.percent}%` : ''}</span></div><span class="num" style="font: 500 14px/1 Manrope, sans-serif">${rub(it.sum)}</span></div>`).join('')}
+${items.map(it => `<div class="co-item"><img src="${esc(imgOf(it.product))}" alt="" width="56" height="70"><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0"><span style="font: 500 19px/1.1 'Cormorant Garamond', serif">${esc(it.product.name)}</span><span class="small" style="font-size: 12.5px">${esc(it.product.brand)} · ${volLabel(it.product, it.vol)} × ${it.qty}${it.oldUnit ? ` · скидка ${it.product.sale.percent}%` : ''}</span></div><span class="num" style="font: 500 14px/1 Manrope, sans-serif">${rub(it.sum)}</span></div>`).join('')}
 </div>
 <hr class="hair">
 <div style="display: flex; justify-content: space-between"><span class="small" style="font-size: 14px">Доставка</span><span class="small" style="font-size: 14px">по согласованию</span></div>
@@ -239,7 +239,7 @@ function successView({ order, via }) {
 </div>
 <hr class="hair" style="margin: 28px 0">
 <div style="display: flex; flex-direction: column; gap: 14px">
-${order.items.map(it => `<div style="display: flex; justify-content: space-between; gap: 16px; text-align: left"><span style="font: 400 14px/1.4 Manrope, sans-serif; color: #DCD7CD">${esc(it.brand)} — ${esc(it.name)}, ${it.vol} мл × ${it.qty}</span><span class="num" style="font: 500 14px/1.4 Manrope, sans-serif; white-space: nowrap">${rub(it.sum)}</span></div>`).join('')}
+${order.items.map(it => `<div style="display: flex; justify-content: space-between; gap: 16px; text-align: left"><span style="font: 400 14px/1.4 Manrope, sans-serif; color: #DCD7CD">${esc(it.brand)} — ${esc(it.name)}, ${esc(it.volLabel || it.vol + ' мл')} × ${it.qty}</span><span class="num" style="font: 500 14px/1.4 Manrope, sans-serif; white-space: nowrap">${rub(it.sum)}</span></div>`).join('')}
 <div style="display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; border-top: 1px solid rgba(245,241,232,.08)"><span style="font: 600 15px/1 Manrope, sans-serif">Итого</span><span class="num" style="font: 600 24px/1 Manrope, sans-serif; color: #E5D1A1">${rub(order.total)}</span></div>
 </div></div>
 <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 40px"><a href="/" class="btn">Вернуться на главную</a><a href="/catalog" class="btn-ghost">Продолжить покупки</a></div>
