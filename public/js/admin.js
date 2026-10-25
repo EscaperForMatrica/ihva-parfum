@@ -133,16 +133,10 @@ function openEditor(p) {
 <div class="ed-body">
 <div class="ed-sec"><h3>Фото</h3><div class="photo"><img id="ph-img" src="${esc(imgOf(d))}" alt=""><div><label class="drop" id="drop"><input type="file" id="ph-file" accept="image/jpeg,image/png,image/webp" hidden>Нажмите или перетащите фото<br><span class="hint">JPG, PNG или WebP. Мы сами найдём флакон и обрежем кадр 4:5 — останется проверить</span></label></div></div></div>
 <div class="ed-sec"><h3>Основное</h3>
-<div class="g2a"><div class="field"><label class="label" for="f-brand">Бренд</label><input id="f-brand" class="input" value="${esc(d.brand)}" maxlength="60"><span class="err" data-e="brand" hidden></span></div>
-<div class="field"><label class="label" for="f-name">Название</label><input id="f-name" class="input" value="${esc(d.name)}" maxlength="80"><span class="err" data-e="name" hidden></span></div></div>
-<div class="g2a"><div class="field"><label class="label" for="f-type">Тип <em>— например Eau de Parfum</em></label><input id="f-type" class="input" value="${esc(d.type)}" maxlength="60"></div>
-<div class="field"><label class="label" for="f-gender">Для кого</label><select id="f-gender" class="input">${GENDERS.map(g => `<option ${g === d.gender ? 'selected' : ''}>${g}</option>`).join('')}</select></div></div>
-<div class="field"><span class="label">Категории</span><div style="display:flex;gap:8px;flex-wrap:wrap">${CATS.map(c => `<button type="button" class="chip ${d.cats.includes(c) ? 'on' : ''}" data-cat="${c}" aria-pressed="${d.cats.includes(c)}">${c}</button>`).join('')}</div><span class="err" data-e="cats" hidden></span></div>
-<div class="g2a"><div class="field"><label class="label" for="f-family">Тип аромата</label><select id="f-family" class="input">${FAMILIES.map(g => `<option ${g === d.family ? 'selected' : ''}>${g}</option>`).join('')}</select></div>
-<div class="field"><label class="label" for="f-tag">Метка на фото <em>— необязательно</em></label><input id="f-tag" class="input" value="${esc(d.tag)}" maxlength="24" placeholder="Нишевый, Хит, Новинка"></div></div>
-<div class="g2a"><div class="field"><label class="label" for="f-kind">Вид</label><select id="f-kind" class="input"><option value="">Не указан</option>${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${d.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
-<div class="field"><label class="label" for="f-sale">Скидка на этот товар, % <em>— перекрывает скидку вида</em></label><div style="display:grid;grid-template-columns:90px 1fr;gap:10px"><input id="f-sale" class="input" inputmode="numeric" value="${d.discount?.percent || ''}" placeholder="0" aria-label="Процент скидки"><input id="f-sale-until" class="input" type="date" value="${esc(d.discount?.until || '')}" aria-label="Скидка действует до"></div><span class="err" data-e="discount" hidden></span><span class="hint">Пусто — без отдельной скидки. Дата — последний день скидки.</span></div></div>
-<div class="field"><label class="label" for="f-desc">Описание</label><textarea id="f-desc" class="input" maxlength="1000">${esc(d.description)}</textarea></div></div>
+<div class="g2a"><div class="field"><label class="label" for="f-brand">Бренд</label><input id="f-brand" class="input" value="${esc(d.brand)}" maxlength="60" placeholder="Например, Xerjoff"><span class="err" data-e="brand" hidden></span></div>
+<div class="field"><label class="label" for="f-name">Название</label><input id="f-name" class="input" value="${esc(d.name)}" maxlength="80" placeholder="Например, Purple Accento"><span class="err" data-e="name" hidden></span></div></div>
+<div class="g2a"><div class="field"><label class="label" for="f-gender">Для кого</label><select id="f-gender" class="input">${GENDERS.map(g => `<option ${g === d.gender ? 'selected' : ''}>${g}</option>`).join('')}</select></div>
+<div class="field"><label class="label" for="f-kind">Вид</label><select id="f-kind" class="input"><option value="">Не указан</option>${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${d.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div></div></div>
 <div class="ed-sec"><h3>Формат продажи</h3>
 <div class="seg" role="radiogroup" aria-label="Формат продажи"><button type="button" class="seg-b ${mode === 'decant' ? 'on' : ''}" data-mode="decant" role="radio" aria-checked="${mode === 'decant'}"><b>Разливной формат</b><span>3, 5, 10, 30, 50 мл…</span></button><button type="button" class="seg-b ${mode === 'bottle' ? 'on' : ''}" data-mode="bottle" role="radio" aria-checked="${mode === 'bottle'}"><b>Целый флакон</b><span>без разлива, одна цена</span></button></div>
 <div id="m-decant" ${mode === 'decant' ? '' : 'hidden'}><p class="hint" style="margin:0 0 12px">Цена за один флакон выбранного объёма. Снимите галочку, если объёма нет в наличии.</p>
@@ -152,7 +146,15 @@ function openEditor(p) {
 <div class="vrow" style="grid-template-columns:130px 1fr auto"><div class="field"><label class="label" for="f-bml">Объём, мл</label><input class="input" id="f-bml" inputmode="numeric" value="${d.bottleMl || ''}" placeholder="100"><span class="err" data-e="bottleMl" hidden></span></div>
 <div class="field"><label class="label" for="f-bp">Цена за флакон, ₽</label><input class="input" id="f-bp" inputmode="numeric" data-price="0" value="${full.price ?? ''}" placeholder="12 900"><span class="err" data-e="price_0" hidden></span></div>
 <label class="chk" style="padding-top:22px"><input type="checkbox" data-avail="0" ${full.available !== false ? 'checked' : ''}>В наличии</label></div></div></div>
-<div class="ed-sec"><h3>Показ на сайте</h3><label class="vrow" style="grid-template-columns:auto 1fr;cursor:pointer"><button type="button" class="sw ${d.hidden ? '' : 'on'}" id="f-vis" role="switch" aria-checked="${!d.hidden}"></button><span id="f-vis-t" style="font:500 14px/1.3 var(--sans)">${d.hidden ? 'Скрыт — покупатели не видят этот товар' : 'Показан в каталоге'}</span></label></div>
+<details class="opt" ${isNew ? '' : 'open'}><summary>Дополнительно: описание, категории, скидка, показ</summary><div class="ed-sec">
+<div class="field"><label class="label" for="f-desc">Описание <em>— если пусто, подставим стандартное</em></label><textarea id="f-desc" class="input" maxlength="1000">${esc(d.description)}</textarea></div>
+<div class="g2a"><div class="field"><label class="label" for="f-type">Тип <em>— например Eau de Parfum</em></label><input id="f-type" class="input" value="${esc(d.type)}" maxlength="60"></div>
+<div class="field"><label class="label" for="f-family">Тип аромата</label><select id="f-family" class="input">${FAMILIES.map(g => `<option ${g === d.family ? 'selected' : ''}>${g}</option>`).join('')}</select></div></div>
+<div class="field"><span class="label">Категории <em>— выбираются сами по полю «Для кого», можно поправить</em></span><div style="display:flex;gap:8px;flex-wrap:wrap">${CATS.map(c => `<button type="button" class="chip ${d.cats.includes(c) ? 'on' : ''}" data-cat="${c}" aria-pressed="${d.cats.includes(c)}">${c}</button>`).join('')}</div><span class="err" data-e="cats" hidden></span></div>
+<div class="g2a"><div class="field"><label class="label" for="f-tag">Метка на фото <em>— необязательно</em></label><input id="f-tag" class="input" value="${esc(d.tag)}" maxlength="24" placeholder="Нишевый, Хит, Новинка"></div>
+<div class="field"><label class="label" for="f-sale">Скидка на этот товар, % <em>— перекрывает скидку вида</em></label><div style="display:grid;grid-template-columns:90px 1fr;gap:10px"><input id="f-sale" class="input" inputmode="numeric" value="${d.discount?.percent || ''}" placeholder="0" aria-label="Процент скидки"><input id="f-sale-until" class="input" type="date" value="${esc(d.discount?.until || '')}" aria-label="Скидка действует до"></div><span class="err" data-e="discount" hidden></span><span class="hint">Пусто — без отдельной скидки. Дата — последний день скидки.</span></div></div>
+<div class="ed-sec" style="margin-top:6px"><h3>Показ на сайте</h3><label class="vrow" style="grid-template-columns:auto 1fr;cursor:pointer"><button type="button" class="sw ${d.hidden ? '' : 'on'}" id="f-vis" role="switch" aria-checked="${!d.hidden}"></button><span id="f-vis-t" style="font:500 14px/1.3 var(--sans)">${d.hidden ? 'Скрыт — покупатели не видят этот товар' : 'Показан в каталоге'}</span></label></div>
+</div></details>
 <details class="opt" ${d.notes || d.longevity || d.audience || d.brandInfo ? 'open' : ''}><summary>Ноты и дополнительные сведения</summary><div class="ed-sec">
 <div class="field"><label class="label" for="n-top">Верхние ноты</label><input id="n-top" class="input" value="${esc(n.top || '')}" maxlength="120"></div>
 <div class="field"><label class="label" for="n-heart">Средние ноты</label><input id="n-heart" class="input" value="${esc(n.heart || '')}" maxlength="120"></div>
@@ -169,10 +171,19 @@ function openEditor(p) {
   el.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
   el.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
   $('#f-brand', el).focus();
+  // категории подбираются по полю «Для кого», пока их не правили руками
+  let catsTouched = !isNew;
+  const GENDER_CAT = { 'Мужской': 'Мужская', 'Женский': 'Женская', 'Для всех': 'Для всех' };
+  $('#f-gender', el).addEventListener('change', e => {
+    if (catsTouched) return;
+    const keep = d.cats.filter(c => c === 'Нишевые');
+    d.cats = [GENDER_CAT[e.target.value], ...keep];
+    $$('[data-cat]', el).forEach(b => { const on = d.cats.includes(b.dataset.cat); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  });
 
   el.addEventListener('click', e => {
     const c = e.target.closest('[data-cat]');
-    if (c) { const v = c.dataset.cat, i = d.cats.indexOf(v); if (i >= 0) d.cats.splice(i, 1); else d.cats.push(v); c.classList.toggle('on', i < 0); c.setAttribute('aria-pressed', i < 0); }
+    if (c) { catsTouched = true; const v = c.dataset.cat, i = d.cats.indexOf(v); if (i >= 0) d.cats.splice(i, 1); else d.cats.push(v); c.classList.toggle('on', i < 0); c.setAttribute('aria-pressed', i < 0); }
     if (e.target.closest('#f-vis')) { d.hidden = !d.hidden; $('#f-vis', el).classList.toggle('on', !d.hidden); $('#f-vis', el).setAttribute('aria-checked', !d.hidden); $('#f-vis-t', el).textContent = d.hidden ? 'Скрыт — покупатели не видят этот товар' : 'Показан в каталоге'; }
     const m = e.target.closest('[data-mode]');
     if (m) { mode = m.dataset.mode; $$('[data-mode]', el).forEach(b => { const on = b.dataset.mode === mode; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); }); $('#m-decant', el).hidden = mode !== 'decant'; $('#m-bottle', el).hidden = mode !== 'bottle'; }
@@ -220,7 +231,9 @@ function openEditor(p) {
       btn.disabled = false; btn.textContent = 'Сохранить';
       if (err.data?.fields) {
         for (const [k, m] of Object.entries(err.data.fields)) { const s = $(`[data-e="${k}"]`, el); if (s) { s.textContent = m; s.hidden = false; } }
-        el.querySelector('[data-e]:not([hidden])')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        const first = el.querySelector('[data-e]:not([hidden])');
+        first?.closest('details')?.setAttribute('open', '');
+        first?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       }
       if (err.message !== 'unauthorized') note('Не сохранено', err.message, 'bad');
     }
