@@ -67,13 +67,88 @@ export function detectSubject(bmp) {
     }
     const cx = (x0 + x1) / 2 / w, cy = (y0 + y1) / 2 / h;
     const centrality = 1 - Math.hypot(cx - 0.5, cy - 0.5);
-    const val = area * Math.max(0.2, centrality);
-    if (!bestC || val > bestC.val) bestC = { val, x0, y0, x1, y1, area };
+    // учитываем и площадь рамки: контур прозрачного флакона важнее одной этикетки внутри него
+    const val = Math.sqrt(area * (x1 - x0 + 1) * (y1 - y0 + 1)) * Math.max(0.2, centrality);
+    if (!bestC || val > bestC.val) bestC = { val, x0, y0, x1, y1, area, s };
   }
   if (!bestC) return null;
   const frac = (bestC.x1 - bestC.x0 + 1) * (bestC.y1 - bestC.y0 + 1) / (w * h);
   if (frac < 0.03 || frac > 0.97) return null;       // ничего внятного — отдадим центр-кроп
-  return { x: bestC.x0 / k, y: bestC.y0 / k, w: (bestC.x1 - bestC.x0 + 1) / k, h: (bestC.y1 - bestC.y0 + 1) / k };
+  return { x: bestC.x0 / k, y: bestC.y0 / k, w: (bestC.x1 - bestC.x0 + 1) / k, h: (bestC.y1 - bestC.y0 + 1) / k, mask: subjectMask(mask, w, h, bestC) };
+}
+
+/** Маска предмета: выбранная область, дыры (прозрачное стекло) закрашены построчно, края чуть сжаты. */
+function subjectMask(mask, w, h, c) {
+  const comp = new Uint8Array(w * h), stack = [c.s]; comp[c.s] = 1;
+  while (stack.length) {
+    const i = stack.pop(), x = i % w;
+    for (const j of [i - 1, i + 1, i - w, i + w]) if (j >= 0 && j < w * h && mask[j] && !comp[j] && Math.abs((j % w) - x) <= 1) { comp[j] = 1; stack.push(j); }
+  }
+  const filled = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    let a = -1, b = -1;
+    for (let x = 0; x < w; x++) if (comp[y * w + x]) { if (a < 0) a = x; b = x; }
+    if (a >= 0) filled.fill(1, y * w + a, y * w + b + 1);
+  }
+  const out = new Uint8Array(filled);                    // сжатие на 1 px: убирает ореол от расширения
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x;
+    if (filled[i] && !(filled[i - 1] && filled[i + 1] && filled[i - w] && filled[i + w])) out[i] = 0;
+  }
+  return { data: out, w, h };
+}
+
+/** Маска «вручную»: скруглённый прямоугольник по области флакона (в том же низком разрешении, что и автомаска). */
+function rectMask(W, H, reg) {
+  const k = 200 / Math.max(W, H), w = Math.max(8, Math.round(W * k)), h = Math.max(8, Math.round(H * k));
+  const x0 = reg.x * k, y0 = reg.y * k, x1 = (reg.x + reg.w) * k, y1 = (reg.y + reg.h) * k, rad = Math.min(x1 - x0, y1 - y0) * 0.14;
+  const data = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const px = x + 0.5, py = y + 0.5;
+    if (px < x0 || px > x1 || py < y0 || py > y1) continue;
+    const cx = Math.min(Math.max(px, x0 + rad), x1 - rad), cy = Math.min(Math.max(py, y0 + rad), y1 - rad);
+    if (Math.hypot(px - cx, py - cy) <= rad) data[y * w + x] = 1;
+  }
+  return { data, w, h };
+}
+
+/** Размытие без ctx.filter (его нет в Safari): уменьшаем и растягиваем обратно. */
+function softCopy(src, w, h, factor) {
+  let cur = src;
+  for (const f of [factor, factor * 0.6]) {
+    const t = document.createElement('canvas'); t.width = Math.max(2, Math.round(w / f)); t.height = Math.max(2, Math.round(h / f));
+    const c = t.getContext('2d'); c.imageSmoothingQuality = 'high'; c.drawImage(cur, 0, 0, t.width, t.height);
+    const u = document.createElement('canvas'); u.width = w; u.height = h;
+    const d = u.getContext('2d'); d.imageSmoothingQuality = 'high'; d.drawImage(t, 0, 0, w, h);
+    cur = u;
+  }
+  return cur;
+}
+
+/** Рисует фрагмент снимка src (в координатах исходника) размером ow×oh; при strength > 0 фон вне предмета размыт. */
+export function compose(bmp, subject, strength, src, ow, oh) {
+  const base = document.createElement('canvas'); base.width = ow; base.height = oh;
+  const bc = base.getContext('2d'); bc.imageSmoothingQuality = 'high';
+  bc.drawImage(bmp, src.x, src.y, src.w, src.h, 0, 0, ow, oh);
+  if (!subject?.mask || strength <= 0) return base;
+
+  const blurred = softCopy(base, ow, oh, 2 + strength / 100 * 16 * Math.max(0.5, ow / 600));
+  // мягкая маска предмета в координатах результата
+  const m = subject.mask, mc = document.createElement('canvas'); mc.width = m.w; mc.height = m.h;
+  const mctx = mc.getContext('2d'), img = mctx.createImageData(m.w, m.h);
+  for (let i = 0; i < m.w * m.h; i++) { img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = 255; img.data[i * 4 + 3] = m.data[i] ? 255 : 0; }
+  mctx.putImageData(img, 0, 0);
+  const sc = ow / src.w, W = bmp.width, H = bmp.height;
+  const soft = document.createElement('canvas'); soft.width = ow; soft.height = oh;
+  const sctx = soft.getContext('2d'); sctx.imageSmoothingQuality = 'high';
+  sctx.drawImage(mc, 0, 0, m.w, m.h, (0 - src.x) * sc, (0 - src.y) * sc, W * sc, H * sc);
+  const feathered = softCopy(soft, ow, oh, Math.max(2, ow / 90));            // растушёвка края
+  const sharp = document.createElement('canvas'); sharp.width = ow; sharp.height = oh;
+  const shc = sharp.getContext('2d'); shc.drawImage(base, 0, 0);
+  shc.globalCompositeOperation = 'destination-in'; shc.drawImage(feathered, 0, 0);
+  const out = document.createElement('canvas'); out.width = ow; out.height = oh;
+  const oc = out.getContext('2d'); oc.drawImage(blurred, 0, 0); oc.drawImage(sharp, 0, 0);
+  return out;
 }
 
 /** Кадр 4:5 вокруг найденного предмета (с полями), в пределах снимка. */
@@ -105,10 +180,25 @@ export function cropImage(file) {
     el.innerHTML = `<div class="crop" role="dialog" aria-modal="true" aria-label="Обрезка фото">
 <div class="crop-head"><b>Обрезка фото</b><span class="hint">${box ? 'Флакон найден автоматически. ' : 'Флакон не удалось найти — выбран центр. '}Можно подвинуть кадр.</span></div>
 <div class="crop-stage"><canvas></canvas></div>
-<label class="crop-zoom"><span>Масштаб кадра</span><input type="range" min="30" max="100" value="100"></label>
+<label class="crop-zoom"><span>Масштаб кадра</span><input type="range" min="30" max="100" value="100" data-r="zoom"></label>
+<div class="crop-blur"><label class="crop-chk"><input type="checkbox" data-r="blurOn"> Размыть фон, чтобы флакон был виднее</label>
+<div data-r="blurRow" hidden class="crop-blur-in"><label class="crop-zoom"><span>Сила размытия</span><input type="range" min="10" max="100" value="60" data-r="blur"></label>
+<div class="seg2" role="radiogroup" aria-label="Контур флакона"><button type="button" data-c="auto" class="${box ? 'on' : ''}" ${box ? '' : 'disabled'}>Контур: авто</button><button type="button" data-c="manual" class="${box ? '' : 'on'}">Вручную</button></div>
+<div data-r="regionRow" ${box ? 'hidden' : ''} class="crop-blur-in"><p class="hint" style="margin:0">Перетащите пунктирную рамку на флакон и подгоните размер.</p><label class="crop-zoom"><span>Ширина</span><input type="range" min="8" max="100" data-r="rw"></label><label class="crop-zoom"><span>Высота</span><input type="range" min="8" max="100" data-r="rh"></label></div></div></div>
 <div class="crop-act"><button type="button" class="btn-ghost sm" data-a="auto">Найти заново</button><button type="button" class="btn-ghost sm" data-a="full">По центру</button><span class="sp"></span><button type="button" class="btn-ghost" data-a="cancel">Отмена</button><button type="button" class="btn" data-a="ok">Готово</button></div></div>`;
     document.body.append(el);
-    const cv = el.querySelector('canvas'), ctx = cv.getContext('2d'), zoom = el.querySelector('input');
+    const cv = el.querySelector('canvas'), ctx = cv.getContext('2d'), zoom = el.querySelector('[data-r="zoom"]');
+    const blurOn = el.querySelector('[data-r="blurOn"]'), blurRow = el.querySelector('[data-r="blurRow"]'), blurR = el.querySelector('[data-r="blur"]');
+    const regionRow = el.querySelector('[data-r="regionRow"]'), rwR = el.querySelector('[data-r="rw"]'), rhR = el.querySelector('[data-r="rh"]');
+    let manual = !box;
+    let region = box ? { x: box.x, y: box.y, w: box.w, h: box.h } : { x: W * 0.3, y: H * 0.2, w: W * 0.4, h: H * 0.6 };
+    const subject = () => (manual ? { mask: rectMask(W, H, region) } : box);
+    const syncRegionUi = () => { rwR.value = Math.round(region.w / W * 100); rhR.value = Math.round(region.h / H * 100); };
+    syncRegionUi();
+    let preview = null;
+    const strength = () => (blurOn?.checked ? Number(blurR.value) : 0);
+    const rebuild = () => { preview = strength() ? compose(bmp, subject(), strength(), { x: 0, y: 0, w: W, h: H }, cv.width, cv.height) : null; sync(); };
+    let raf = 0; const rebuildSoon = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(rebuild); };
     const maxH = Math.min(innerHeight * 0.55, 560), maxWpx = Math.min(innerWidth - 56, 640);
     const s = Math.min(maxWpx / W, maxH / H);
     cv.width = Math.round(W * s); cv.height = Math.round(H * s);
@@ -116,25 +206,51 @@ export function cropImage(file) {
     function sync() {
       zoom.value = Math.round(r.w / maxW * 100);
       ctx.clearRect(0, 0, cv.width, cv.height);
-      ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
+      ctx.drawImage(preview || bmp, 0, 0, cv.width, cv.height);
       const x = r.x * s, y = r.y * s, w = r.w * s, h = r.w / RATIO * s;
       ctx.fillStyle = 'rgba(8,8,8,.62)';
       ctx.fillRect(0, 0, cv.width, y); ctx.fillRect(0, y + h, cv.width, cv.height - y - h);
       ctx.fillRect(0, y, x, h); ctx.fillRect(x + w, y, cv.width - x - w, h);
       ctx.strokeStyle = '#C6A15B'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+      if (blurOn?.checked && manual) { ctx.save(); ctx.setLineDash([6, 5]); ctx.strokeStyle = '#E5D1A1'; ctx.lineWidth = 2; ctx.strokeRect(region.x * s, region.y * s, region.w * s, region.h * s); ctx.restore(); }
       ctx.strokeStyle = 'rgba(229,209,161,.35)'; ctx.lineWidth = 1;
       for (let i = 1; i < 3; i++) { ctx.beginPath(); ctx.moveTo(x + w * i / 3, y); ctx.lineTo(x + w * i / 3, y + h); ctx.moveTo(x, y + h * i / 3); ctx.lineTo(x + w, y + h * i / 3); ctx.stroke(); }
     }
     sync();
 
     let drag = null;
-    cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); drag = { px: e.offsetX, py: e.offsetY, x: r.x, y: r.y }; });
-    cv.addEventListener('pointermove', e => { if (!drag) return; r = clamp({ w: r.w, x: drag.x + (e.offsetX - drag.px) / s, y: drag.y + (e.offsetY - drag.py) / s }, W, H); sync(); });
+    cv.addEventListener('pointerdown', e => {
+      cv.setPointerCapture(e.pointerId);
+      const ix = e.offsetX / s, iy = e.offsetY / s;
+      const inRegion = blurOn?.checked && manual && ix >= region.x && ix <= region.x + region.w && iy >= region.y && iy <= region.y + region.h;
+      drag = { px: e.offsetX, py: e.offsetY, x: inRegion ? region.x : r.x, y: inRegion ? region.y : r.y, region: inRegion };
+    });
+    cv.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const nx = drag.x + (e.offsetX - drag.px) / s, ny = drag.y + (e.offsetY - drag.py) / s;
+      if (drag.region) { region.x = Math.min(Math.max(0, nx), W - region.w); region.y = Math.min(Math.max(0, ny), H - region.h); rebuildSoon(); }
+      else { r = clamp({ w: r.w, x: nx, y: ny }, W, H); sync(); }
+    });
     cv.addEventListener('pointerup', () => { drag = null; });
     zoom.addEventListener('input', () => {
       const cx = r.x + r.w / 2, cy = r.y + r.w / RATIO / 2, nw = maxW * Number(zoom.value) / 100;
       r = clamp({ w: nw, x: cx - nw / 2, y: cy - nw / RATIO / 2 }, W, H); sync();
     });
+
+    blurOn?.addEventListener('change', () => { blurRow.hidden = !blurOn.checked; rebuild(); });
+    el.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => {
+      manual = b.dataset.c === 'manual';
+      el.querySelectorAll('[data-c]').forEach(x => x.classList.toggle('on', x === b));
+      regionRow.hidden = !manual; rebuild();
+    }));
+    const resizeRegion = () => {
+      const cx = region.x + region.w / 2, cy = region.y + region.h / 2;
+      region.w = W * Number(rwR.value) / 100; region.h = H * Number(rhR.value) / 100;
+      region.x = Math.min(Math.max(0, cx - region.w / 2), W - region.w); region.y = Math.min(Math.max(0, cy - region.h / 2), H - region.h);
+      rebuildSoon();
+    };
+    rwR.addEventListener('input', resizeRegion); rhR.addEventListener('input', resizeRegion);
+    blurR?.addEventListener('input', rebuildSoon);
 
     const done = v => { removeEventListener('keydown', onKey); el.remove(); v === undefined ? resolve(null) : resolve(v); };
     const onKey = e => { if (e.key === 'Escape') done(null); };
@@ -148,7 +264,7 @@ export function cropImage(file) {
         const ow = Math.min(OUT_W, Math.round(r.w)), oh = Math.round(ow / RATIO);
         const out = document.createElement('canvas'); out.width = ow; out.height = oh;
         const o = out.getContext('2d'); o.imageSmoothingQuality = 'high';
-        o.drawImage(bmp, r.x, r.y, r.w, r.w / RATIO, 0, 0, ow, oh);
+        o.drawImage(compose(bmp, subject(), strength(), { x: r.x, y: r.y, w: r.w, h: r.w / RATIO }, ow, oh), 0, 0);
         out.toBlob(b => done(b), 'image/jpeg', 0.92);
       }
     });
