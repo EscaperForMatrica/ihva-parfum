@@ -118,7 +118,7 @@ test/      api.test.js
 
 ## Боевой сайт на lite-host
 
-Сайт: **https://ihva.taubatour.ru** (cPanel + Phusion Passenger, Node 24 из `/opt/alt`).
+Сайт: **https://ihvaparfume.ru** (домен в REG.RU, DNS — `ns3.lite-host.in` / `ns4.lite-host.su`, сертификат Let's Encrypt через AutoSSL; тестовый адрес https://ihva.taubatour.ru) (cPanel + Phusion Passenger, Node 24 из `/opt/alt`).
 `~/ihva-app` — код и `.env` (только на сервере), `~/ihva-data` — база заявок (выкладка её не трогает),
-`~/ihva.taubatour.ru/.htaccess` — подключение Passenger. Обновление: `DEPLOY_HOST=mars.lite-host.in sh scripts/deploy.sh`.
+`~/ihvaparfume.ru/.htaccess` и `~/ihva.taubatour.ru/.htaccess` — подключение Passenger (в первом ещё переадресация www/http → https://ihvaparfume.ru). Новые домены cPanel на этом аккаунте добавляет в исключения AutoSSL — их нужно убрать оттуда (`uapi SSL remove_autossl_excluded_domains`), иначе сертификат не выпустится. Обновление: `DEPLOY_HOST=mars.lite-host.in sh scripts/deploy.sh`.
 После правки `.env` на сервере: `touch ~/ihva-app/tmp/restart.txt`.
