@@ -29,7 +29,7 @@ async function login(pw = 'correct horse') {
   if (r.ok) cookie = r.headers.get('set-cookie').split(';')[0];
   return r;
 }
-const order = (items, phone = '8 928 000 00 00') => ({ name: 'Анна', phone, city: 'Махачкала', method: 'telegram', contact: '', comment: '', items, clientOrderId: randomUUID(), website: '' });
+const order = (items, phone = '8 928 000 00 00') => ({ name: 'Анна', phone, city: 'Махачкала', method: 'telegram', contact: '', comment: '', items, clientOrderId: randomUUID(), website: '', consent: true });
 
 before(async () => { mock = await startMock(0); });
 after(async () => { if (app) await shutdown(); mock.server.closeAllConnections(); mock.server.close(); });
@@ -265,4 +265,13 @@ test('формат продажи: или разлив, или целый фла
   pub = (await (await fetch(`${base}/api/products`)).json()).find(p => p.id === 'xerjoff');
   assert.deepEqual(pub.variants.map(v => v.vol), [3, 5, 6, 10, 30, 50]);
   assert.equal(pub.bottleMl, null);
+});
+
+test('удаление заявки из админки', async () => {
+  await fetch(`${base}/api/orders`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(order([{ id: 'xerjoff', vol: 3, qty: 1 }])) });
+  await login();
+  const [o] = await (await call('orders')).json();
+  assert.equal((await call(`orders/${o.orderNo}`, { method: 'DELETE' })).status, 200);
+  assert.equal((await (await call('orders')).json()).length, 0);
+  assert.equal((await call(`orders/${o.orderNo}`, { method: 'DELETE' })).status, 404);
 });

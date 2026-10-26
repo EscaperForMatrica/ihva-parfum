@@ -18,8 +18,8 @@ const rowToOrder = r => ({
 export function createOrderService({ db, config, catalog, limiters, send = sendMessage }) {
   const byClient = db.prepare('SELECT * FROM orders WHERE client_id = ?');
   const countDay = db.prepare('SELECT COUNT(*) AS n FROM orders WHERE order_no LIKE ?');
-  const insert = db.prepare(`INSERT INTO orders (order_no, client_id, created_at, name, phone, city, method, contact, comment, items, total)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  const insert = db.prepare(`INSERT INTO orders (order_no, client_id, created_at, name, phone, city, method, contact, comment, items, total, consent_at)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   const markSent = db.prepare("UPDATE orders SET tg_status='sent', tg_attempts=tg_attempts+1, tg_error=NULL, tg_sent_at=? WHERE order_no=?");
   const markFailed = db.prepare("UPDATE orders SET tg_status='failed', tg_attempts=tg_attempts+1, tg_error=? WHERE order_no=?");
 
@@ -31,7 +31,7 @@ export function createOrderService({ db, config, catalog, limiters, send = sendM
     db.exec('BEGIN IMMEDIATE');
     try {
       const orderNo = prefix + String(countDay.get(prefix + '%').n + 1).padStart(4, '0');
-      insert.run(orderNo, v.clientId, now.toISOString(), v.name, v.phone, v.city, v.method, v.contact, v.comment, JSON.stringify(priced.lines), priced.total);
+      insert.run(orderNo, v.clientId, now.toISOString(), v.name, v.phone, v.city, v.method, v.contact, v.comment, JSON.stringify(priced.lines), priced.total, now.toISOString());
       db.exec('COMMIT');
       return rowToOrder(byClient.get(v.clientId));
     } catch (e) { db.exec('ROLLBACK'); throw e; }

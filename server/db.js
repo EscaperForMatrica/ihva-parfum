@@ -29,5 +29,6 @@ export function openDb(path) {
   `);
   // миграция: статус обработки заявки менеджером
   if (!db.prepare('PRAGMA table_info(orders)').all().some(c => c.name === 'status')) db.exec("ALTER TABLE orders ADD COLUMN status TEXT NOT NULL DEFAULT 'new'");
+  if (!db.prepare('PRAGMA table_info(orders)').all().some(c => c.name === 'consent_at')) db.exec('ALTER TABLE orders ADD COLUMN consent_at TEXT');
   return db;
 }

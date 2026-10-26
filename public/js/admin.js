@@ -253,7 +253,7 @@ ${list.length ? list.map(o => {
 <div class="ord-meta"><span><b>${esc(o.name)}</b></span><a href="tel:${esc(tel)}">${esc(o.phone)}</a><span>${esc(o.city)}</span><span>Связь: ${METHOD[o.method] || esc(o.method)}${o.contact ? ' — ' + esc(o.contact) : ''}</span></div>
 <ul>${o.items.map(i => `<li><span>${esc(i.brand)} — ${esc(i.name)}, ${esc(i.volLabel || i.vol + ' мл')} × ${i.qty}</span><span>${rub(i.sum)}</span></li>`).join('')}</ul>
 ${o.comment ? `<div class="hint">Комментарий: ${esc(o.comment)}</div>` : ''}
-<div class="ord-act">${o.status === 'done' ? '<button class="btn-ghost sm" data-st="new">Вернуть в новые</button>' : '<button class="btn sm" data-st="done">Отметить выполненной</button>'}${o.tgStatus === 'sent' ? '' : '<button class="btn-ghost sm" data-resend>Отправить в Telegram ещё раз</button>'}</div></article>`;
+<div class="ord-act">${o.status === 'done' ? '<button class="btn-ghost sm" data-st="new">Вернуть в новые</button>' : '<button class="btn sm" data-st="done">Отметить выполненной</button>'}${o.tgStatus === 'sent' ? '' : '<button class="btn-ghost sm" data-resend>Отправить в Telegram ещё раз</button>'}<button class="btn-ghost sm" data-delo style="margin-left:auto;color:var(--err);border-color:rgba(229,138,107,.4)">Удалить</button></div></article>`;
   }).join('') : '<div class="empty">Заявок пока нет</div>'}`);
   $('.adm-wrap').addEventListener('click', async e => {
     const card = e.target.closest('.ord'); if (!card) return;
@@ -262,6 +262,10 @@ ${o.comment ? `<div class="hint">Комментарий: ${esc(o.comment)}</div>
       const s = e.target.closest('[data-st]');
       if (s) await api(`orders/${no}/status`, { method: 'POST', body: { status: s.dataset.st } });
       else if (e.target.closest('[data-resend]')) { await api(`orders/${no}/resend`, { method: 'POST' }); note('Отправлено в Telegram', no); }
+      else if (e.target.closest('[data-delo]')) {
+        if (!confirm(`Удалить заявку № ${no} вместе с данными покупателя? Это нельзя отменить.`)) return;
+        await api(`orders/${no}`, { method: 'DELETE' }); note('Заявка удалена', no);
+      }
       else return;
       await load(); renderOrders();
     } catch (err) { if (err.message !== 'unauthorized') note('Не получилось', err.message, 'bad'); }

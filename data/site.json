@@ -40,5 +40,13 @@
       "alt": "Стеклянный флакон 50 мл",
       "hint": "Большой флакон"
     }
-  ]
+  ],
+  "operator": {
+    "name": "",
+    "inn": "",
+    "ogrn": "",
+    "address": "",
+    "email": ""
+  },
+  "domain": "ihvaparfume.ru"
 }

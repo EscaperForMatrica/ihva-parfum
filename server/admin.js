@@ -129,6 +129,11 @@ export function createAdmin({ config, db, catalog, uploadsDir, send = sendMessag
     if (route === 'orders' && req.method === 'GET') {
       return [200, db.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT 200').all().map(orderRow)];
     }
+    const dm = route.match(/^orders\/(IH-\d{6}-\d{4})$/);
+    if (dm && req.method === 'DELETE') {   // по запросу покупателя (отзыв согласия) или для тестовых заявок
+      const n = db.prepare('DELETE FROM orders WHERE order_no = ?').run(dm[1]).changes;
+      return n ? [200, { ok: true }] : [404, { ok: false, message: 'Заявка не найдена' }];
+    }
     const om = route.match(/^orders\/(IH-\d{6}-\d{4})\/(status|resend)$/);
     if (om && req.method === 'POST') {
       const row = db.prepare('SELECT * FROM orders WHERE order_no = ?').get(om[1]);

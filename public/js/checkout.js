@@ -33,6 +33,7 @@ function validate() {
   if (!d.length) e.phone = 'Укажите номер телефона';
   else if (!(d.length === 11 && (d[0] === '7' || d[0] === '8')) && !(d.length === 10 && d[0] === '9')) e.phone = 'Номер выглядит неполным — нужно 11 цифр';
   if (form.city.trim().length < 2) e.city = 'Укажите город для доставки';
+  if (!$('#consent')?.checked) e.consent = 'Нужно согласие на обработку персональных данных';
   return e;
 }
 
@@ -86,6 +87,7 @@ function formView(priced) {
 <div class="field"><label class="label" for="cm">Комментарий к заказу <em>— необязательно</em></label><textarea id="cm" name="comment" class="input" maxlength="500" placeholder="Удобное время для связи, пожелания по подбору или доставке"></textarea></div>
 </fieldset>
 <input type="text" name="website" class="vh" tabindex="-1" autocomplete="off" aria-hidden="true">
+<div class="field"><label class="consent" id="consent-l"><input type="checkbox" name="consent" id="consent"><span>Даю <a href="/consent" target="_blank" rel="noopener">согласие на обработку персональных данных</a> и подтверждаю, что ознакомлен(-а) с <a href="/privacy" target="_blank" rel="noopener">политикой конфиденциальности</a></span></label>${errLine('consent')}</div>
 <div style="display: flex; flex-direction: column; gap: 16px">
 <button type="submit" class="btn block" id="co-submit" style="min-height: 58px; font-size: 15px">Оформить заказ</button>
 <p class="small" style="margin: 0; text-align: center; font-size: 13.5px">После оформления заявки менеджер свяжется с вами для подтверждения заказа и согласования оплаты и доставки.</p>
@@ -99,6 +101,7 @@ ${summaryHTML(priced)}
   paintMethod();
   f.addEventListener('input', e => {
     const t = e.target;
+    if (t.name === 'consent') { clearError('consent'); $('#consent-l').classList.remove('bad'); return; }
     if (!(t.name in form)) return;
     form[t.name] = t.value;
     ss.set(DRAFT_KEY, form);
@@ -126,14 +129,15 @@ function paintMethod() {
 }
 
 function showErrors(errors) {
-  const keys = Object.keys(errors).filter(k => ['name', 'phone', 'city'].includes(k));
-  for (const k of ['name', 'phone', 'city']) {
+  const keys = Object.keys(errors).filter(k => ['name', 'phone', 'city', 'consent'].includes(k));
+  for (const k of ['name', 'phone', 'city', 'consent']) {
     const el = $(`[data-err="${k}"]`), input = $(`[name="${k}"]`);
     const msg = errors[k];
     el.hidden = !msg; el.querySelector('span').textContent = msg || '';
     input.classList.toggle('bad', Boolean(msg));
     input.setAttribute('aria-invalid', Boolean(msg));
   }
+  $('#consent-l')?.classList.toggle('bad', Boolean(errors.consent));
   if (keys.length) {
     setAlert(`<span>Проверьте выделенные поля — без них менеджер не сможет связаться с вами.</span>`);
     $(`[name="${keys[0]}"]`).focus();
@@ -161,7 +165,8 @@ function payload(priced) {
   const body = {
     name: form.name.trim(), phone: form.phone.trim(), city: form.city.trim(), method: form.method,
     contact: form.contact.trim(), comment: form.comment.trim(),
-    items: priced.items.map(i => ({ id: i.id, vol: i.vol, qty: i.qty }))
+    items: priced.items.map(i => ({ id: i.id, vol: i.vol, qty: i.qty })),
+    consent: Boolean($('#consent')?.checked)
   };
   // Один и тот же clientOrderId на все повторы той же заявки → сервер не создаёт дубль.
   const sig = JSON.stringify(body);

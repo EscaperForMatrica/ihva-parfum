@@ -21,7 +21,7 @@ const shutdown = () => new Promise(r => { app.server.close(r); app.server.closeA
 const order = (over = {}) => ({
   name: 'Анна', phone: '8 928 000 00 00', city: 'Махачкала', method: 'telegram', contact: '@anna', comment: '',
   items: [{ id: 'xerjoff', vol: 10, qty: 1 }, { id: 'mancera', vol: 5, qty: 2 }],
-  clientOrderId: randomUUID(), website: '', ...over
+  clientOrderId: randomUUID(), website: '', consent: true, ...over
 });
 const post = (body, headers = {}) => fetch(`${base}/api/orders`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) });
 
@@ -184,4 +184,37 @@ test('каталог отдаётся единым источником и со�
   assert.equal(x.variants.find(v => v.vol === 50).price, 11490);
   const r = await (await post(order({ items: [{ id: 'xerjoff', vol: 50, qty: 1 }] }))).json();
   assert.equal(r.order.total, 11490);
+});
+
+test('без согласия на обработку персональных данных заявка не принимается', async () => {
+  const r = await post(order({ consent: false }));
+  assert.equal(r.status, 400);
+  assert.ok((await r.json()).fields.consent);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM orders').get().n, 0);
+  const ok = await post(order());
+  assert.equal(ok.status, 200);
+  assert.ok(db.prepare('SELECT consent_at FROM orders').get().consent_at);
+});
+
+test('страницы политики и согласия открываются и есть в подвале', async () => {
+  for (const p of ['/privacy', '/consent']) {
+    const r = await fetch(base + p);
+    assert.equal(r.status, 200);
+    const html = await r.text();
+    assert.match(html, /персональных данных/);
+    assert.doesNotMatch(html, /\{\{/);           // все подстановки заполнены
+  }
+  assert.match(await (await fetch(base + '/')).text(), /href="\/privacy"/);
+});
+
+test('заявки старше срока хранения удаляются при запуске', async () => {
+  await shutdown();
+  const config = loadConfig({ TELEGRAM_BOT_TOKEN: '111:SECRET', TELEGRAM_CHAT_ID: '-100', TELEGRAM_API_BASE: `http://127.0.0.1:${mock.port}`, ORDER_RETENTION_DAYS: '30' });
+  db = openDb(':memory:');
+  db.prepare(`INSERT INTO orders (order_no, client_id, created_at, name, phone, city, method, items, total) VALUES ('IH-200101-0001', 'old', '2020-01-01T00:00:00Z', 'А', '+7', 'Г', 'call', '[]', 1)`).run();
+  db.prepare(`INSERT INTO orders (order_no, client_id, created_at, name, phone, city, method, items, total) VALUES ('IH-261026-0009', 'new', ?, 'Б', '+7', 'Г', 'call', '[]', 1)`).run(new Date().toISOString());
+  app = createApp({ config, db });
+  await new Promise(r => app.server.listen(0, '127.0.0.1', r));
+  base = `http://127.0.0.1:${app.server.address().port}`;
+  assert.deepEqual(db.prepare('SELECT order_no FROM orders').all().map(r => r.order_no), ['IH-261026-0009']);
 });

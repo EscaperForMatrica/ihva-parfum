@@ -42,6 +42,15 @@ export function createApp({ config, db: dbOverride, send } = {}) {
   const orders = createOrderService({ db, config, catalog, limiters, send });
   const uploadsDir = resolve(config.uploadsDir || join(dirname(config.databasePath === ':memory:' ? './storage/x' : config.databasePath), 'uploads'));
   const admin = createAdmin({ config, db, catalog, uploadsDir, send });
+
+  // заявки старше срока хранения (политика, раздел 7) удаляются автоматически
+  const purgeOld = () => {
+    const cutoff = new Date(Date.now() - config.orderRetentionDays * 864e5).toISOString();
+    const n = db.prepare('DELETE FROM orders WHERE created_at < ?').run(cutoff).changes;
+    if (n) console.log(`[orders] удалено заявок по сроку хранения: ${n}`);
+  };
+  purgeOld();
+  setInterval(purgeOld, 12 * 3600 * 1000).unref();
   const getSite = () => ({ ...catalog.site, formats: catalog.formats(), telegramUrl: config.publicTelegramUrl });
 
   // ---------- шаблоны страниц ----------
@@ -68,6 +77,10 @@ export function createApp({ config, db: dbOverride, send } = {}) {
       '{{canonical}}': config.siteUrl ? `<link rel="canonical" href="${esc(config.siteUrl + path)}">` : '',
       '{{ft_tg}}': config.publicTelegramUrl ? `<a href="${esc(config.publicTelegramUrl)}" rel="noopener" target="_blank">Telegram</a>` : '',
       '{{ft_wa}}': `<a href="${esc(site.whatsapp)}" rel="noopener" target="_blank">WhatsApp · ${esc(site.phoneDisplay)}</a>`,
+      '{{operator}}': operatorHtml(site),
+      '{{operator_short}}': esc(site.operator?.name || 'владелец интернет-магазина IHVA PARFUM'),
+      '{{retention_years}}': String(Math.round(config.orderRetentionDays / 365)),
+      '{{site_domain}}': esc(site.domain || 'ihvaparfume.ru'),
       '{{phone}}': esc(site.phoneDisplay), '{{phone_tel}}': esc(site.phoneTel),
       '{{menu_tg}}': config.publicTelegramUrl ? tgLink('class="btn-ghost sm"') : '',
       '{{menu_wa}}': waLink('class="btn-ghost sm"'),
@@ -77,6 +90,19 @@ export function createApp({ config, db: dbOverride, send } = {}) {
     for (const [k, v] of Object.entries(vars)) html = html.split(k).join(v);
     html = html.replace(/\{\{on:([a-z]+)\}\}/g, (_, n) => (n === active ? 'on' : ''));
     return html;
+  }
+
+  /** Реквизиты оператора персональных данных — только заполненные поля из data/site.json. */
+  function operatorHtml(site) {
+    const o = site.operator || {}, rows = [];
+    rows.push(['Оператор', o.name || 'владелец интернет-магазина IHVA PARFUM']);
+    if (o.inn) rows.push(['ИНН', o.inn]);
+    if (o.ogrn) rows.push(['ОГРН / ОГРНИП', o.ogrn]);
+    if (o.address) rows.push(['Адрес', o.address]);
+    if (o.email) rows.push(['Электронная почта', `<a href="mailto:${esc(o.email)}">${esc(o.email)}</a>`]);
+    rows.push(['Телефон и WhatsApp', `<a href="tel:${esc(site.phoneTel)}">${esc(site.phoneDisplay)}</a>`]);
+    rows.push(['Сайт', esc(site.domain || 'ihvaparfume.ru')]);
+    return `<dl class="doc-req">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${k === 'Электронная почта' || k === 'Телефон и WhatsApp' ? v : esc(v)}</dd>`).join('')}</dl>`;
   }
 
   // ---------- статика ----------
@@ -183,7 +209,9 @@ export function createApp({ config, db: dbOverride, send } = {}) {
       '/': ['index', 'home', 'IHVA PARFUM — парфюмерный бутик'],
       '/catalog': ['catalog', 'catalog', 'Каталог ароматов — IHVA PARFUM'],
       '/cart': ['cart', 'cart', 'Корзина — IHVA PARFUM'],
-      '/checkout': ['checkout', 'checkout', 'Оформление заказа — IHVA PARFUM']
+      '/checkout': ['checkout', 'checkout', 'Оформление заказа — IHVA PARFUM'],
+      '/privacy': ['privacy', 'privacy', 'Политика обработки персональных данных — IHVA PARFUM'],
+      '/consent': ['consent', 'consent', 'Согласие на обработку персональных данных — IHVA PARFUM']
     };
     if (path === '/admin' || path === '/admin/') {
       const html = await readFile(join(PAGES, 'admin.html'), 'utf8');

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+<meta name="theme-color" content="#080808">
+<meta property="og:title" content="{{title}}"><meta property="og:description" content="{{description}}"><meta property="og:type" content="website">
+{{canonical}}
+<link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/fonts.css">
+<link rel="stylesheet" href="/css/design.css">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body class="pg-doc">
+<a class="skip" href="#main">К содержимому</a>
+<div style="background: #080808; color: #F5F1E8; min-height: 100vh">
+<!--@header-->
+<main id="main"><article class="wrap doc" style="padding-top: 40px; padding-bottom: 120px">
+<nav class="crumbs" aria-label="Хлебные крошки"><a href="/">Главная</a><i></i><span style="color: #CFCAC0">Согласие на обработку персональных данных</span></nav>
+<header class="doc-head"><div class="eyebrow">Документ</div><h1 class="display">Согласие на обработку персональных данных</h1><p class="small">Редакция от 26 октября 2026 года · сайт {{site_domain}}</p></header>
+
+<section><p>Отмечая галочку «Даю согласие на обработку персональных данных» и отправляя заявку на сайте {{site_domain}}, я свободно, своей волей и в своём интересе даю согласие оператору — {{operator_short}} (реквизиты ниже) — на обработку моих персональных данных на следующих условиях.</p>
+{{operator}}</section>
+
+<section><h2>Какие данные</h2><p>Имя, номер телефона, город доставки, выбранный способ связи и контакт в мессенджере (если указан), комментарий к заказу (если указан), состав заказа.</p></section>
+<section><h2>Для чего</h2><p>Обработка моей заявки, связь со мной для подтверждения заказа и согласования оплаты и доставки, исполнение заказа.</p></section>
+<section><h2>Какие действия</h2><p>Сбор, запись, систематизация, хранение, уточнение, извлечение, использование, передача (предоставление), блокирование, удаление и уничтожение — с использованием средств автоматизации.</p></section>
+<section><h2>Передача</h2><p>Я согласен(-на), что текст моей заявки направляется менеджерам магазина в мессенджер Telegram (Telegram Bot API), серверы которого могут находиться за пределами Российской Федерации, а для доставки — службе доставки, согласованной с менеджером.</p></section>
+<section><h2>Срок и отзыв</h2><p>Согласие действует до достижения целей обработки, но не дольше {{retention_years}} лет с даты заявки. Я могу отозвать согласие в любой момент, написав или позвонив по контактам оператора; данные будут удалены в течение 30 дней.</p>
+<p>Подробнее — в <a href="/privacy">Политике обработки персональных данных</a>.</p></section>
+</article></main>
+<!--@footer-->
+</div>
+<!--@menu-->
+<script type="module" src="/js/page.js"></script>
+</body>
+</html>

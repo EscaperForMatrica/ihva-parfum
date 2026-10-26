@@ -41,6 +41,9 @@ export function validateOrder(body) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId)) errors.clientOrderId = 'Не удалось создать заявку, обновите страницу';
   out.clientId = clientId.toLowerCase();
 
+  // отдельное согласие на обработку персональных данных (152-ФЗ, ст. 9)
+  if (body.consent !== true) errors.consent = 'Нужно согласие на обработку персональных данных';
+
   // honeypot: настоящие пользователи это поле не видят и не заполняют
   out.spam = String(body.website ?? '').length > 0;
 
