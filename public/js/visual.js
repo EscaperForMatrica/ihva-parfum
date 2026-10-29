@@ -2,6 +2,7 @@
 // цвет флакона (гистограмма HSV по пикселям флакона), форма (пропорции, заполненность) и рисунок
 // (гистограмма направлений контуров, как HOG). Признаки товаров считаются в админке и хранятся на сервере.
 import { subjectAlpha } from './matting.js';
+import { decodeImage } from './decode.js';
 
 const HB = 12, CBINS = HB * 2 * 3 + 3;          // 12 оттенков × 2 насыщенности × 3 яркости + 3 серых
 const GW = 4, GH = 8, OB = 9;                    // клетки 4×8 по 8×8 px, 9 направлений
@@ -75,5 +76,5 @@ export function similarity(a, b) {
 /** Открывает картинку по адресу как ImageBitmap (для индекса в админке). */
 export async function bitmapFromUrl(url) {
   const blob = await (await fetch(url, { cache: 'force-cache' })).blob();
-  return createImageBitmap(blob);
+  return decodeImage(blob);
 }

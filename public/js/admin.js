@@ -33,7 +33,7 @@ const volName = (p, vol) => (vol === 0 ? `Флакон ${p.bottleMl} мл` : `${
 
 /** Открывает окно авто-обрезки (кадр 4:5 вокруг флакона) и загружает результат. Возвращает путь вида /uploads/... */
 async function uploadImage(file) {
-  if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Нужна картинка JPG, PNG или WebP');
+  if (!file || (file.type && !file.type.startsWith('image/'))) throw new Error('Выберите фото');   // HEIC и др. — проверит декодер
   const blob = await cropImage(file);
   if (!blob) throw new Error('cancel');
   return (await api('upload', { method: 'POST', raw: { type: 'image/jpeg', data: blob } })).path;
@@ -160,7 +160,7 @@ function openEditor(p) {
   el.innerHTML = `<div class="ed-back" data-close></div><form class="ed" role="dialog" aria-modal="true" aria-label="${isNew ? 'Новый товар' : 'Редактирование'}" novalidate>
 <div class="ed-head"><h2>${isNew ? 'Новый товар' : esc(d.name)}</h2><button type="button" class="ibtn" data-close aria-label="Закрыть">${svg('close')}</button></div>
 <div class="ed-body">
-<div class="ed-sec"><h3>Фото</h3><div class="photo"><img id="ph-img" src="${esc(imgOf(d))}" alt=""><div><label class="drop" id="drop"><input type="file" id="ph-file" accept="image/jpeg,image/png,image/webp" hidden>Нажмите или перетащите фото<br><span class="hint">JPG, PNG или WebP. Мы сами найдём флакон и обрежем кадр 4:5 — останется проверить</span></label></div></div></div>
+<div class="ed-sec"><h3>Фото</h3><div class="photo"><img id="ph-img" src="${esc(imgOf(d))}" alt=""><div><label class="drop" id="drop"><input type="file" id="ph-file" accept="image/*" hidden>Нажмите или перетащите фото<br><span class="hint">JPG, PNG или WebP. Мы сами найдём флакон и обрежем кадр 4:5 — останется проверить</span></label></div></div></div>
 <div class="ed-sec"><h3>Основное</h3>
 <div class="g2a"><div class="field"><label class="label" for="f-brand">Бренд</label><input id="f-brand" class="input" value="${esc(d.brand)}" maxlength="60" placeholder="Например, Xerjoff"><span class="err" data-e="brand" hidden></span></div>
 <div class="field"><label class="label" for="f-name">Название</label><input id="f-name" class="input" value="${esc(d.name)}" maxlength="80" placeholder="Например, Purple Accento"><span class="err" data-e="name" hidden></span></div></div>
@@ -360,7 +360,7 @@ function renderFormats() {
   shell(`<div class="adm-head"><div><div class="eyebrow">Главная и страница аромата</div><h1 class="display">Форматы</h1></div></div>
 <p class="hint" style="margin:-8px 0 20px;max-width:620px">Флаконы 3–50 мл показываются на главной и в галерее аромата. Здесь меняются фото и подписи. Цена и наличие каждого объёма задаются в карточке товара.</p>
 <div class="fgrid-a">${st.formats.map(f => `<form class="fcard" data-vol="${f.vol}" novalidate>
-<label class="fimg" title="Заменить фото"><img src="${esc(f.image)}" alt="${esc(f.alt)}"><input type="file" accept="image/jpeg,image/png,image/webp" hidden><span>Заменить фото</span></label>
+<label class="fimg" title="Заменить фото"><img src="${esc(f.image)}" alt="${esc(f.alt)}"><input type="file" accept="image/*" hidden><span>Заменить фото</span></label>
 <b class="fvol">${f.vol} мл</b>
 <div class="field"><label class="label">Подпись на главной</label><input class="input" name="caption" value="${esc(f.caption)}" maxlength="30"></div>
 <div class="field"><label class="label">Подсказка в карточке аромата</label><input class="input" name="hint" value="${esc(f.hint)}" maxlength="60" placeholder="Например: Стеклянный флакон"></div>

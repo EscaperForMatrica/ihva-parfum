@@ -1,6 +1,7 @@
 // Поиск по фото для покупателей: сфотографировать флакон → похожие ароматы из каталога.
 import { $, esc, svg, cardHTML, bindCards, site, waLink } from './core.js';
 import { features, similarity } from './visual.js';
+import { decodeImage } from './decode.js';
 
 let index = null;
 const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9а-яё]+/g, ' ').trim();
@@ -33,7 +34,7 @@ async function run(f, products) {
   el.querySelector('.ps-q img').src = URL.createObjectURL(f);
 
   try {
-    const bmp = await createImageBitmap(f);
+    const bmp = await decodeImage(f);
     status('Ищем флакон на фото…');
     const [q, idx] = await Promise.all([features(bmp), loadIndex()]);
     const byId = new Map(products.map(p => [p.id, p]));
@@ -60,6 +61,6 @@ async function run(f, products) {
     bindCards(res, () => products);
   } catch (err) {
     console.error(err);
-    status('Не удалось распознать фото в этом браузере. Попробуйте другое фото или поиск по названию.');
+    status(err?.message?.startsWith('Этот формат') ? err.message : 'Не удалось распознать фото в этом браузере. Попробуйте другое фото или поиск по названию.');
   }
 }

@@ -1,6 +1,7 @@
 // Авто-обрезка фото флакона: находит предмет на снимке и предлагает кадр 4:5 вокруг него.
 // Всё считается в браузере (без сервера и библиотек). Кадр можно подвинуть и изменить масштаб.
 import { subjectAlpha, alphaBox } from './matting.js';
+import { decodeImage } from './decode.js';
 
 const RATIO = 0.8;          // ширина / высота кадра (как у карточек магазина)
 const OUT_W = 1000;         // ширина готового фото, px (не больше исходного)
@@ -194,7 +195,7 @@ const clamp = (r, W, H) => ({ w: r.w, x: Math.min(Math.max(0, r.x), W - r.w), y:
 export function cropImage(file) {
   return new Promise(async (resolve, reject) => {
     let bmp;
-    try { bmp = await createImageBitmap(file); } catch { reject(new Error('Не удалось открыть картинку')); return; }
+    try { bmp = await decodeImage(file); } catch (e) { reject(e); return; }
     const W = bmp.width, H = bmp.height, maxW = Math.min(W, H * RATIO);
     const box = detectSubject(bmp);
     let r = frameFor(W, H, box);
