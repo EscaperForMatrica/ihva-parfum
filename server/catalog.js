@@ -33,6 +33,7 @@ export function createCatalog(db) {
   }
 
   db.exec('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+  db.exec('CREATE TABLE IF NOT EXISTS visual (id TEXT PRIMARY KEY, image TEXT NOT NULL, vec TEXT NOT NULL, updated_at TEXT NOT NULL)');
   const catalog = { site };
   /** Форматы флаконов (3–50 мл): подпись, подсказка и фото. Правятся в админке, по умолчанию — из data/site.json. */
   catalog.formats = () => {
@@ -107,7 +108,13 @@ export function createCatalog(db) {
       .run(data.id, JSON.stringify(data), hidden ? 1 : 0, data.popularity, new Date().toISOString());
     catalog.refresh();
   };
-  catalog.remove = id => { db.prepare('DELETE FROM products WHERE id = ?').run(id); catalog.refresh(); };
+  catalog.remove = id => { db.prepare('DELETE FROM products WHERE id = ?').run(id); db.prepare('DELETE FROM visual WHERE id = ?').run(id); catalog.refresh(); };
+  /** Признаки фото для поиска: только для видимых товаров и только если посчитаны по их текущему фото. */
+  catalog.visualIndex = () => db.prepare('SELECT id, image, vec FROM visual').all()
+    .filter(r => catalog.byId.get(r.id)?.image === r.image).map(r => ({ id: r.id, v: JSON.parse(r.vec) }));
+  catalog.visualStatus = () => Object.fromEntries(db.prepare('SELECT id, image FROM visual').all().map(r => [r.id, r.image]));
+  catalog.setVisual = (id, image, vec) => db.prepare(`INSERT INTO visual (id, image, vec, updated_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET image = excluded.image, vec = excluded.vec, updated_at = excluded.updated_at`).run(id, image, JSON.stringify(vec), new Date().toISOString());
   catalog.exists = id => Boolean(db.prepare('SELECT 1 FROM products WHERE id = ?').get(id));
   catalog.refresh();
   return catalog;
@@ -136,7 +143,12 @@ export function validateProduct(body, existing = {}) {
   const n = body.notes || {};
   const notes = { top: str(n.top, 120), heart: str(n.heart, 120), base: str(n.base, 120) };
   v.notes = notes.top || notes.heart || notes.base ? notes : null;
-  v.seasons = existing.seasons ?? null;
+  // сезоны: оценка 0–5; все нули — блок на сайте не показывается
+  const SEASONS = ['Весна', 'Лето', 'Осень', 'Зима'];
+  if (body.seasons && typeof body.seasons === 'object') {
+    const ss = Object.fromEntries(SEASONS.map(k => [k, Math.max(0, Math.min(5, Math.round(Number(body.seasons[k]) || 0)))]));
+    v.seasons = Object.values(ss).some(x => x > 0) ? ss : null;
+  } else v.seasons = existing.seasons ?? null;
   v.longevity = str(body.longevity, 40) || null;
   v.audience = text(body.audience, 300) || null;
   v.brandInfo = text(body.brandInfo, 400) || null;

@@ -23,7 +23,7 @@ const MIME = {
 };
 
 const SECURITY_HEADERS = {
-  'content-security-policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+  'content-security-policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
   'x-frame-options': 'DENY',
@@ -172,6 +172,7 @@ export function createApp({ config, db: dbOverride, send } = {}) {
 
     if (path === '/api/health') return send_(res, 200, { ok: true, telegram: telegramConfigured(config) });
     if (path === '/api/products' && req.method === 'GET') return send_(res, 200, catalog.products, { 'cache-control': 'no-cache' });
+    if (path === '/api/visual' && req.method === 'GET') return send_(res, 200, catalog.visualIndex(), { 'cache-control': 'no-cache' });
     if (path === '/api/site' && req.method === 'GET') return send_(res, 200, getSite(), { 'cache-control': 'no-cache' });
 
     if (path === '/api/orders') {

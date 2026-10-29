@@ -1,16 +1,18 @@
 // Админка IHVA PARFUM: товары (цены, наличие, фото, показ/скрытие) и заявки. Без зависимостей.
 import { $, $$, esc, rub, svg, toast, plural } from './core.js';
 import { cropImage } from './imgcrop.js';
+import { features, bitmapFromUrl } from './visual.js';
 
 const app = $('#app');
 const CATS = ['Мужская', 'Женская', 'Для всех', 'Нишевые'];
 const FAMILIES = ['Восточные', 'Древесные', 'Цветочные', 'Цитрусовые'];
 const GENDERS = ['Мужской', 'Женский', 'Для всех'];
 const VOLS = [3, 5, 6, 10, 30, 50];
+const SEASONS = ['Весна', 'Лето', 'Осень', 'Зима'];
 const LADDER = { 3: 1, 5: 1.6, 6: 1.8, 10: 2.8, 30: 7.5, 50: 11.6 };
 const PLACEHOLDER = '/images/placeholder.svg';
 
-const st = { tab: 'products', products: [], orders: [], formats: [], groups: {}, q: '', editing: null };
+const st = { tab: 'products', products: [], orders: [], formats: [], groups: {}, visual: {}, q: '', editing: null };
 const KINDS = { original: 'Оригиналы', oil: 'Масляные' };
 
 async function api(path, { method = 'GET', body, raw } = {}) {
@@ -35,6 +37,29 @@ async function uploadImage(file) {
   const blob = await cropImage(file);
   if (!blob) throw new Error('cancel');
   return (await api('upload', { method: 'POST', raw: { type: 'image/jpeg', data: blob } })).path;
+}
+
+// ---------- поиск по фото: признаки фото товаров ----------
+const photoOf = p => p.image && !/\.svg$/i.test(p.image);
+const needsIndex = p => photoOf(p) && st.visual[p.id] !== p.image;
+async function indexProduct(p) {
+  const vec = await features(await bitmapFromUrl(p.image));
+  await api('visual/' + p.id, { method: 'PUT', body: { image: p.image, vec } });
+  st.visual[p.id] = p.image;
+}
+let indexing = false;
+async function indexAll(onlyMissing = true) {
+  if (indexing) return;
+  const list = st.products.filter(p => photoOf(p) && (!onlyMissing || needsIndex(p)));
+  if (!list.length) return note('Индекс актуален', 'Все фото уже добавлены в поиск');
+  indexing = true;
+  try {
+    for (let i = 0; i < list.length; i++) {
+      const b = $('#vis-btn'); if (b) b.textContent = `Обрабатываем ${i + 1} из ${list.length}…`;
+      try { await indexProduct(list[i]); } catch (e) { if (e.message === 'unauthorized') return; console.warn(list[i].id, e); }
+    }
+    note('Поиск по фото обновлён', `${list.length} ${plural(list.length, ['фото', 'фото', 'фото'])}`);
+  } finally { indexing = false; if (st.tab === 'products') renderProducts(); }
 }
 
 // ---------- вход ----------
@@ -76,9 +101,11 @@ function renderProducts() {
 <div class="adm-stats"><div class="adm-stat"><b>${all.length}</b><span>всего товаров</span></div>
 <div class="adm-stat ${out ? 'warn' : ''}"><b>${out}</b><span>нет в наличии</span></div>
 <div class="adm-stat"><b>${hidden}</b><span>скрыто с сайта</span></div></div>
+${(() => { const withPhoto = all.filter(photoOf).length, missing = all.filter(needsIndex).length; return `<div class="vis-bar"><span>${svg('search')} Поиск по фото: в индексе ${withPhoto - missing} из ${withPhoto} товаров с фото${missing ? ' — <b>есть новые фото</b>' : ''}</span><button class="btn-ghost sm" id="vis-btn">${missing ? 'Добавить новые фото в поиск' : 'Пересчитать всё'}</button></div>`; })()}
 <div class="adm-bar"><div class="search">${svg('search')}<input id="aq" class="input" type="search" placeholder="Найти по названию или бренду" value="${esc(st.q)}" autocomplete="off"></div></div>
 <div id="plist">${list.length ? list.map(rowHTML).join('') : '<div class="empty">Ничего не найдено</div>'}</div>`);
   $('#add').addEventListener('click', () => openEditor(null));
+  $('#vis-btn').addEventListener('click', () => indexAll(all.filter(needsIndex).length > 0));
   $('#aq').addEventListener('input', e => { st.q = e.target.value; const pos = e.target.selectionStart; renderProducts(); const el = $('#aq'); el.focus(); el.setSelectionRange(pos, pos); });
   $('#plist').addEventListener('click', onListClick);
 }
@@ -146,23 +173,25 @@ function openEditor(p) {
 <div class="vrow" style="grid-template-columns:130px 1fr auto"><div class="field"><label class="label" for="f-bml">Объём, мл</label><input class="input" id="f-bml" inputmode="numeric" value="${d.bottleMl || ''}" placeholder="100"><span class="err" data-e="bottleMl" hidden></span></div>
 <div class="field"><label class="label" for="f-bp">Цена за флакон, ₽</label><input class="input" id="f-bp" inputmode="numeric" data-price="0" value="${full.price ?? ''}" placeholder="12 900"><span class="err" data-e="price_0" hidden></span></div>
 <label class="chk" style="padding-top:22px"><input type="checkbox" data-avail="0" ${full.available !== false ? 'checked' : ''}>В наличии</label></div></div></div>
-<details class="opt" ${isNew ? '' : 'open'}><summary>Дополнительно: описание, категории, скидка, показ</summary><div class="ed-sec">
+<div class="ed-sec"><h3>Описание аромата</h3>
 <div class="field"><label class="label" for="f-desc">Описание <em>— если пусто, подставим стандартное</em></label><textarea id="f-desc" class="input" maxlength="1000">${esc(d.description)}</textarea></div>
+<div class="field"><span class="label">Сезоны <em>— насколько аромат подходит; нажмите на точку, повторное нажатие — сброс</em></span><div class="seas" id="seas">${SEASONS.map(s => `<div class="seas-row" data-season="${s}"><span>${s}</span><span class="seas-dots">${[1, 2, 3, 4, 5].map(i => `<button type="button" class="sd ${(d.seasons?.[s] || 0) >= i ? 'on' : ''}" data-v="${i}" aria-label="${s}: ${i} из 5"></button>`).join('')}</span><span class="seas-n">${d.seasons?.[s] || 0}/5</span></div>`).join('')}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><button type="button" class="chip" data-season-preset="all">Всесезонный</button><button type="button" class="chip" data-season-preset="warm">Весна–лето</button><button type="button" class="chip" data-season-preset="cold">Осень–зима</button><button type="button" class="chip" data-season-preset="none">Не указывать</button></div></div>
+<div class="field"><label class="label" for="n-top">Верхние ноты</label><input id="n-top" class="input" value="${esc(n.top || '')}" maxlength="120"></div>
+<div class="field"><label class="label" for="n-heart">Средние ноты</label><input id="n-heart" class="input" value="${esc(n.heart || '')}" maxlength="120"></div>
+<div class="field"><label class="label" for="n-base">Базовые ноты</label><input id="n-base" class="input" value="${esc(n.base || '')}" maxlength="120"></div>
+<div class="field"><label class="label" for="f-long">Стойкость</label><input id="f-long" class="input" value="${esc(d.longevity || '')}" maxlength="40" placeholder="до 10 часов"></div>
+<div class="field"><label class="label" for="f-aud">Для кого (текст)</label><textarea id="f-aud" class="input" style="min-height:70px" maxlength="300">${esc(d.audience || '')}</textarea></div>
+</div>
+<details class="opt" ${isNew ? '' : 'open'}><summary>Дополнительно: категории, метка, скидка, показ</summary><div class="ed-sec">
 <div class="g2a"><div class="field"><label class="label" for="f-type">Тип <em>— например Eau de Parfum</em></label><input id="f-type" class="input" value="${esc(d.type)}" maxlength="60"></div>
 <div class="field"><label class="label" for="f-family">Тип аромата</label><select id="f-family" class="input">${FAMILIES.map(g => `<option ${g === d.family ? 'selected' : ''}>${g}</option>`).join('')}</select></div></div>
 <div class="field"><span class="label">Категории <em>— выбираются сами по полю «Для кого», можно поправить</em></span><div style="display:flex;gap:8px;flex-wrap:wrap">${CATS.map(c => `<button type="button" class="chip ${d.cats.includes(c) ? 'on' : ''}" data-cat="${c}" aria-pressed="${d.cats.includes(c)}">${c}</button>`).join('')}</div><span class="err" data-e="cats" hidden></span></div>
 <div class="g2a"><div class="field"><label class="label" for="f-tag">Метка на фото <em>— необязательно</em></label><input id="f-tag" class="input" value="${esc(d.tag)}" maxlength="24" placeholder="Нишевый, Хит, Новинка"></div>
 <div class="field"><label class="label" for="f-sale">Скидка на этот товар, % <em>— перекрывает скидку вида</em></label><div style="display:grid;grid-template-columns:90px 1fr;gap:10px"><input id="f-sale" class="input" inputmode="numeric" value="${d.discount?.percent || ''}" placeholder="0" aria-label="Процент скидки"><input id="f-sale-until" class="input" type="date" value="${esc(d.discount?.until || '')}" aria-label="Скидка действует до"></div><span class="err" data-e="discount" hidden></span><span class="hint">Пусто — без отдельной скидки. Дата — последний день скидки.</span></div></div>
+<div class="field"><label class="label" for="f-pop">Порядок в каталоге <em>— меньше = выше</em></label><input id="f-pop" class="input" inputmode="numeric" value="${d.popularity ?? 50}"></div>
+<div class="field"><label class="label" for="f-bi">О бренде</label><textarea id="f-bi" class="input" style="min-height:70px" maxlength="400">${esc(d.brandInfo || '')}</textarea></div>
 <div class="ed-sec" style="margin-top:6px"><h3>Показ на сайте</h3><label class="vrow" style="grid-template-columns:auto 1fr;cursor:pointer"><button type="button" class="sw ${d.hidden ? '' : 'on'}" id="f-vis" role="switch" aria-checked="${!d.hidden}"></button><span id="f-vis-t" style="font:500 14px/1.3 var(--sans)">${d.hidden ? 'Скрыт — покупатели не видят этот товар' : 'Показан в каталоге'}</span></label></div>
 </div></details>
-<details class="opt" ${d.notes || d.longevity || d.audience || d.brandInfo ? 'open' : ''}><summary>Ноты и дополнительные сведения</summary><div class="ed-sec">
-<div class="field"><label class="label" for="n-top">Верхние ноты</label><input id="n-top" class="input" value="${esc(n.top || '')}" maxlength="120"></div>
-<div class="field"><label class="label" for="n-heart">Средние ноты</label><input id="n-heart" class="input" value="${esc(n.heart || '')}" maxlength="120"></div>
-<div class="field"><label class="label" for="n-base">Базовые ноты</label><input id="n-base" class="input" value="${esc(n.base || '')}" maxlength="120"></div>
-<div class="g2a"><div class="field"><label class="label" for="f-long">Стойкость</label><input id="f-long" class="input" value="${esc(d.longevity || '')}" maxlength="40" placeholder="до 10 часов"></div>
-<div class="field"><label class="label" for="f-pop">Порядок в каталоге <em>— меньше = выше</em></label><input id="f-pop" class="input" inputmode="numeric" value="${d.popularity ?? 50}"></div></div>
-<div class="field"><label class="label" for="f-aud">Для кого (текст)</label><textarea id="f-aud" class="input" style="min-height:70px" maxlength="300">${esc(d.audience || '')}</textarea></div>
-<div class="field"><label class="label" for="f-bi">О бренде</label><textarea id="f-bi" class="input" style="min-height:70px" maxlength="400">${esc(d.brandInfo || '')}</textarea></div></div></details>
 </div>
 <div class="ed-foot">${isNew ? '' : '<button type="button" class="btn-ghost sm" id="del" style="color:var(--err);border-color:rgba(229,138,107,.4)">Удалить</button>'}<span class="sp"></span><button type="button" class="btn-ghost" data-close>Отмена</button><button type="submit" class="btn" id="save">Сохранить</button></div></form>`;
   document.body.append(el);
@@ -172,6 +201,18 @@ function openEditor(p) {
   el.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
   $('#f-brand', el).focus();
   // категории подбираются по полю «Для кого», пока их не правили руками
+  const seasons = Object.fromEntries(SEASONS.map(x => [x, d.seasons?.[x] || 0]));
+  const paintSeasons = () => $$('.seas-row', el).forEach(r => {
+    const v = seasons[r.dataset.season];
+    r.querySelectorAll('.sd').forEach(b => b.classList.toggle('on', Number(b.dataset.v) <= v));
+    r.querySelector('.seas-n').textContent = `${v}/5`;
+  });
+  el.addEventListener('click', e => {
+    const dot = e.target.closest('.sd');
+    if (dot) { const s = dot.closest('.seas-row').dataset.season, v = Number(dot.dataset.v); seasons[s] = seasons[s] === v ? 0 : v; paintSeasons(); return; }
+    const pr = e.target.closest('[data-season-preset]');
+    if (pr) { const P = { all: [4, 4, 4, 4], warm: [5, 5, 2, 1], cold: [2, 1, 5, 5], none: [0, 0, 0, 0] }[pr.dataset.seasonPreset]; SEASONS.forEach((x, i) => { seasons[x] = P[i]; }); paintSeasons(); }
+  });
   let catsTouched = !isNew;
   const GENDER_CAT = { 'Мужской': 'Мужская', 'Женский': 'Женская', 'Для всех': 'Для всех' };
   $('#f-gender', el).addEventListener('change', e => {
@@ -218,6 +259,7 @@ function openEditor(p) {
       brand: $('#f-brand', el).value, name: $('#f-name', el).value, type: $('#f-type', el).value, gender: $('#f-gender', el).value, cats: d.cats,
       kind: $('#f-kind', el).value, discount: { percent: Number($('#f-sale', el).value) || 0, until: $('#f-sale-until', el).value }, family: $('#f-family', el).value, tag: $('#f-tag', el).value, description: $('#f-desc', el).value, image: d.image, hidden: d.hidden,
       popularity: Number($('#f-pop', el).value) || 50, longevity: $('#f-long', el).value, audience: $('#f-aud', el).value, brandInfo: $('#f-bi', el).value,
+      seasons,
       notes: { top: $('#n-top', el).value, heart: $('#n-heart', el).value, base: $('#n-base', el).value },
       mode, bottleMl: Number($('#f-bml', el).value) || 0,
       variants: [...VOLS, 0].map(vol => ({ vol, price: Number($(`[data-price="${vol}"]`, el).value.replace(/\s/g, '')), available: $(`[data-avail="${vol}"]`, el).checked }))
@@ -227,6 +269,8 @@ function openEditor(p) {
     try {
       await api(isNew ? 'products' : 'products/' + d.id, { method: isNew ? 'POST' : 'PUT', body });
       close(); await load(); render(); note('Сохранено', `${body.brand} — ${body.name}`);
+      const saved = st.products.find(p => p.image === body.image && p.name === body.name.trim());
+      if (saved && needsIndex(saved)) indexProduct(saved).then(() => { if (st.tab === 'products') renderProducts(); }).catch(() => {});
     } catch (err) {
       btn.disabled = false; btn.textContent = 'Сохранить';
       if (err.data?.fields) {
@@ -334,7 +378,7 @@ function renderFormats() {
 }
 
 function render() { ({ orders: renderOrders, formats: renderFormats, sales: renderSales }[st.tab] || renderProducts)(); }
-async function load() { [st.products, st.orders, st.formats, st.groups] = await Promise.all([api('products'), api('orders'), api('formats'), api('discounts')]); }
+async function load() { [st.products, st.orders, st.formats, st.groups, st.visual] = await Promise.all([api('products'), api('orders'), api('formats'), api('discounts'), api('visual')]); }
 async function boot() {
   try { await api('me'); } catch (e) { if (e.status === 503) { app.innerHTML = `<div class="login"><h1 class="display d3">Админка выключена</h1><p class="body">Задайте переменную <code>ADMIN_PASSWORD</code> на сервере и перезапустите приложение.</p></div>`; } else if (e.message !== 'unauthorized') renderLogin(); return; }
   await load(); render();

@@ -105,6 +105,17 @@ export function createAdmin({ config, db, catalog, uploadsDir, send = sendMessag
       if (kind !== '' && !(kind in KINDS)) return [400, { ok: false, message: 'Неизвестный вид' }];
       return catalog.setKind(km[1], kind) ? [200, { ok: true }] : [404, { ok: false, message: 'Товар не найден' }];
     }
+    if (route === 'visual' && req.method === 'GET') return [200, catalog.visualStatus()];
+    const vm = route.match(/^visual\/([a-z0-9-]+)$/);
+    if (vm && req.method === 'PUT') {
+      const { image, vec } = await json();
+      const p = catalog.all().find(x => x.id === vm[1]);
+      if (!p) return [404, { ok: false, message: 'Товар не найден' }];
+      if (!p.image || image !== p.image) return [409, { ok: false, message: 'Фото товара изменилось — пересчитайте' }];
+      if (!Array.isArray(vec) || vec.length !== 365 || !vec.every(Number.isFinite)) return [400, { ok: false, message: 'Некорректные признаки' }];
+      catalog.setVisual(p.id, image, vec);
+      return [200, { ok: true }];
+    }
     if (route === 'formats' && req.method === 'GET') return [200, catalog.formats()];
     const fm = route.match(/^formats\/(\d+)$/);
     if (fm && req.method === 'PUT') {

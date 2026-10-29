@@ -356,3 +356,21 @@ body.has-cartbar{padding-bottom:88px}
 .consent input{flex:none;width:20px;height:20px;margin-top:1px;accent-color:var(--gold)}
 .consent a{color:var(--champ);text-decoration:underline;text-underline-offset:3px}
 .consent.bad{color:#F2C1AE}
+
+/* поиск по фото */
+.search .input{padding-right:56px}
+.search-cam{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:0;background:transparent;color:var(--champ);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.search-cam:hover{background:rgba(198,161,91,.12)}
+.search .search-cam svg{position:static;transform:none;width:21px;height:21px;color:currentColor;pointer-events:none}
+.ps-back{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.72);display:flex;align-items:flex-start;justify-content:center;padding:4vh 16px;overflow:auto;animation:fadeB .25s ease both}
+.ps{width:min(980px,100%);background:#111110;border:1px solid var(--line2);border-radius:var(--r-lg);animation:sheetIn .4s var(--ease) both}
+.ps-head{display:flex;justify-content:space-between;align-items:center;padding:14px 12px 14px 24px;border-bottom:1px solid var(--line)}
+.ps-head b{font:500 28px/1 var(--serif)}
+.ps-body{padding:20px 24px 24px;display:flex;flex-direction:column;gap:22px}
+.ps-q{display:grid;grid-template-columns:96px 1fr;gap:16px;align-items:center}
+.ps-q img{width:96px;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line-w)}
+.ps-status{margin:0 0 6px;font:600 15px/1.4 var(--sans);color:var(--text)}
+.ps-item{position:relative}
+.ps-score{position:absolute;top:10px;right:10px;z-index:3;min-height:26px;padding:0 10px;display:inline-flex;align-items:center;border-radius:999px;background:rgba(8,8,8,.7);border:1px solid var(--line2);color:var(--champ);font:600 12px/1 var(--sans)}
+.ps-help a{color:var(--champ);text-decoration:underline;text-underline-offset:3px}
+@media (max-width:600px){.ps-back{padding:0}.ps{border-radius:0;min-height:100%;border:0}.ps-body{padding:16px}.ps-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}

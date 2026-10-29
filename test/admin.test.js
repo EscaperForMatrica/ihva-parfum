@@ -275,3 +275,32 @@ test('удаление заявки из админки', async () => {
   assert.equal((await (await call('orders')).json()).length, 0);
   assert.equal((await call(`orders/${o.orderNo}`, { method: 'DELETE' })).status, 404);
 });
+
+test('сезоны: сохраняются из админки, все нули — блок не показывается', async () => {
+  await login();
+  const x = (await (await call('products')).json()).find(p => p.id === 'chanel');
+  assert.equal((await call('products/chanel', { method: 'PUT', body: { ...x, seasons: { 'Весна': 2, 'Лето': 1, 'Осень': 5, 'Зима': 9 } } })).status, 200);
+  let pub = (await (await fetch(`${base}/api/products`)).json()).find(p => p.id === 'chanel');
+  assert.deepEqual(pub.seasons, { 'Весна': 2, 'Лето': 1, 'Осень': 5, 'Зима': 5 });   // 9 → 5
+  await call('products/chanel', { method: 'PUT', body: { ...x, seasons: { 'Весна': 0, 'Лето': 0, 'Осень': 0, 'Зима': 0 } } });
+  pub = (await (await fetch(`${base}/api/products`)).json()).find(p => p.id === 'chanel');
+  assert.equal(pub.seasons, null);
+});
+
+test('поиск по фото: признаки сохраняются только для текущего фото товара', async () => {
+  await login();
+  const vec = Array.from({ length: 365 }, (_, i) => (i % 7) / 10);
+  assert.equal((await call('visual/xerjoff', { method: 'PUT', body: { image: '/images/products/xerjoff.jpg', vec } })).status, 200);
+  assert.equal((await call('visual/xerjoff', { method: 'PUT', body: { image: '/images/other.jpg', vec } })).status, 409);
+  assert.equal((await call('visual/xerjoff', { method: 'PUT', body: { image: '/images/products/xerjoff.jpg', vec: vec.slice(1) } })).status, 400);
+  assert.equal((await call('visual/xerjoff', { method: 'PUT', body: { image: '/images/products/xerjoff.jpg', vec: [...vec.slice(1), NaN] } })).status, 400);
+  let idx = await (await fetch(`${base}/api/visual`)).json();
+  assert.deepEqual(idx.map(r => r.id), ['xerjoff']);
+  assert.equal(idx[0].v.length, 365);
+  // фото товара сменили → старые признаки не отдаются, пока их не пересчитают
+  const x = (await (await call('products')).json()).find(p => p.id === 'xerjoff');
+  await call('products/xerjoff', { method: 'PUT', body: { ...x, image: '/images/products/amber.jpg' } });
+  idx = await (await fetch(`${base}/api/visual`)).json();
+  assert.equal(idx.length, 0);
+  assert.equal((await fetch(`${base}/api/admin/visual`)).status, 401);
+});

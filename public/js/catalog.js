@@ -1,12 +1,16 @@
 import { $, $$, esc, plural, KIND_LABEL, initChrome, getProducts, bindCards, cardHTML, cart, favs, svg, fatal, inStock } from './core.js';
+import { initPhotoSearch } from './photosearch.js';
+
 
 initChrome();
 
 const CATS = ['Мужская', 'Женская', 'Для всех', 'Нишевые'];
 const VOLS = [3, 5, 6, 10, 30, 50];
 const PRICES = ['до 700 ₽', '700–1 000 ₽', 'от 1 000 ₽'];
-const KEYS = ['kinds', 'cats', 'brands', 'vols', 'prices', 'fams'];
-const PARAM = { kinds: 'kind', cats: 'cat', brands: 'brand', vols: 'vol', prices: 'price', fams: 'fam' };
+const KEYS = ['kinds', 'cats', 'seasons', 'brands', 'vols', 'prices', 'fams'];
+const PARAM = { kinds: 'kind', cats: 'cat', seasons: 'season', brands: 'brand', vols: 'vol', prices: 'price', fams: 'fam' };
+const SEASONS = ['Весна', 'Лето', 'Осень', 'Зима'];
+const fitsSeason = (p, s) => (p.seasons?.[s] || 0) >= 3;   // «подходит» — оценка от 3 из 5
 
 const priceOk = (p, r) => {
   const base = Math.min(...p.variants.map(v => v.price));
@@ -14,7 +18,7 @@ const priceOk = (p, r) => {
 };
 const label = (k, v) => (k === 'vols' ? v + ' мл' : k === 'kinds' ? KIND_LABEL[v] || v : v);
 
-const state = { q: '', kinds: [], cats: [], brands: [], vols: [], prices: [], fams: [], sort: 'pop', fav: false };
+const state = { q: '', kinds: [], seasons: [], cats: [], brands: [], vols: [], prices: [], fams: [], sort: 'pop', fav: false };
 let products = [];
 
 function readUrl() {
@@ -42,6 +46,7 @@ function filtered() {
     return tokens.every(t => hay.includes(t))
       && (!fav || fav.has(p.id))
       && (!state.kinds.length || state.kinds.includes(p.kind))
+      && (!state.seasons.length || state.seasons.some(x => fitsSeason(p, x)))
       && (!state.cats.length || state.cats.some(c => p.cats.includes(c)))
       && (!state.brands.length || state.brands.includes(p.brand))
       && (!state.vols.length || state.vols.some(v => p.variants.some(x => x.vol === v && x.available)))
@@ -58,12 +63,13 @@ function filtered() {
 const options = () => ({
   kinds: ['original', 'oil'].filter(k => products.some(p => p.kind === k)),
   cats: CATS,
+  seasons: SEASONS.filter(x => products.some(p => fitsSeason(p, x))),
   brands: [...new Set(products.map(p => p.brand))].sort((a, b) => a.localeCompare(b)),
   vols: VOLS,
   prices: PRICES,
   fams: [...new Set(products.map(p => p.family))].sort((a, b) => a.localeCompare(b, 'ru'))
 });
-const countOf = (k, v) => k === 'kinds' ? products.filter(p => p.kind === v).length : k === 'cats' ? products.filter(p => p.cats.includes(v)).length : k === 'brands' ? products.filter(p => p.brand === v).length : k === 'fams' ? products.filter(p => p.family === v).length : null;
+const countOf = (k, v) => k === 'kinds' ? products.filter(p => p.kind === v).length : k === 'seasons' ? products.filter(p => fitsSeason(p, v)).length : k === 'cats' ? products.filter(p => p.cats.includes(v)).length : k === 'brands' ? products.filter(p => p.brand === v).length : k === 'fams' ? products.filter(p => p.family === v).length : null;
 
 // ---------- фильтры ----------
 function checkList(k, o) {
@@ -82,6 +88,7 @@ function renderDesktopFilters(o) {
   const kindSec = o.kinds.length ? `<div class="fsec"><h3>Вид</h3>${checkList('kinds', o)}</div>` : '';
   $('#filters-desktop').innerHTML = `${kindSec}
 <div class="fsec"><h3>Категория</h3>${checkList('cats', o)}</div>
+${o.seasons.length ? `<div class="fsec"><h3>Сезон</h3><div style="display: flex; flex-wrap: wrap; gap: 8px">${chipList('seasons', o)}</div></div>` : ''}
 <div class="fsec" id="brands"><h3>Бренд</h3>${checkList('brands', o)}</div>
 <div class="fsec"><h3>Объём</h3><div style="display: flex; flex-wrap: wrap; gap: 8px">${chipList('vols', o)}</div></div>
 <div class="fsec"><h3>Цена</h3><div style="display: flex; flex-wrap: wrap; gap: 8px">${chipList('prices', o)}</div></div>
@@ -91,6 +98,7 @@ function renderPanelFilters(o) {
   const body = $('#fpanel-body'), top = body.scrollTop;
   body.innerHTML = `${o.kinds.length ? `<div class="fsec"><h3>Вид</h3><div class="fp-chips">${chipList('kinds', o)}</div></div>` : ''}
 <div class="fsec"><h3>Категория</h3><div class="fp-chips">${chipList('cats', o)}</div></div>
+${o.seasons.length ? `<div class="fsec"><h3>Сезон</h3><div class="fp-chips">${chipList('seasons', o)}</div></div>` : ''}
 <div class="fsec"><h3>Бренд</h3><div class="fp-chips">${chipList('brands', o)}</div></div>
 <div class="fsec"><h3>Объём</h3><div class="fp-chips vols">${chipList('vols', o)}</div></div>
 <div class="fsec"><h3>Цена за минимальный объём</h3><div class="fp-chips">${chipList('prices', o)}</div></div>
@@ -183,6 +191,7 @@ try {
   $('#q').value = state.q;
   render();
   bindCards($('#results'), () => products, { onChange: () => { if (state.fav) render(); } });
+  initPhotoSearch(() => products);
   const u = new URLSearchParams(location.search);
   if (u.get('focus') === 'search') $('#q').focus();
   if (location.hash === '#brands') {
