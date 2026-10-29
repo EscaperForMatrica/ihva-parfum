@@ -42,6 +42,8 @@ async function uploadImage(file) {
 // ---------- поиск по фото: признаки фото товаров ----------
 const photoOf = p => p.image && !/\.svg$/i.test(p.image);
 const needsIndex = p => photoOf(p) && st.visual[p.id] !== p.image;
+const formatItems = () => st.formats.filter(f => f.image).map(f => ({ id: `format-${f.vol}`, image: f.image, name: `${f.vol} мл` }));
+const searchItems = () => [...st.products, ...formatItems()];
 async function indexProduct(p) {
   const vec = await features(await bitmapFromUrl(p.image));
   await api('visual/' + p.id, { method: 'PUT', body: { image: p.image, vec } });
@@ -50,7 +52,7 @@ async function indexProduct(p) {
 let indexing = false;
 async function indexAll(onlyMissing = true) {
   if (indexing) return;
-  const list = st.products.filter(p => photoOf(p) && (!onlyMissing || needsIndex(p)));
+  const list = searchItems().filter(p => photoOf(p) && (!onlyMissing || needsIndex(p)));
   if (!list.length) return note('Индекс актуален', 'Все фото уже добавлены в поиск');
   indexing = true;
   try {
@@ -101,11 +103,11 @@ function renderProducts() {
 <div class="adm-stats"><div class="adm-stat"><b>${all.length}</b><span>всего товаров</span></div>
 <div class="adm-stat ${out ? 'warn' : ''}"><b>${out}</b><span>нет в наличии</span></div>
 <div class="adm-stat"><b>${hidden}</b><span>скрыто с сайта</span></div></div>
-${(() => { const withPhoto = all.filter(photoOf).length, missing = all.filter(needsIndex).length; return `<div class="vis-bar"><span>${svg('search')} Поиск по фото: в индексе ${withPhoto - missing} из ${withPhoto} товаров с фото${missing ? ' — <b>есть новые фото</b>' : ''}</span><button class="btn-ghost sm" id="vis-btn">${missing ? 'Добавить новые фото в поиск' : 'Пересчитать всё'}</button></div>`; })()}
+${(() => { const items = searchItems(), withPhoto = items.filter(photoOf).length, missing = items.filter(needsIndex).length; return `<div class="vis-bar"><span>${svg('search')} Поиск по фото: в индексе ${withPhoto - missing} из ${withPhoto} фото (товары и флаконы разлива)${missing ? ' — <b>есть новые фото</b>' : ''}</span><button class="btn-ghost sm" id="vis-btn">${missing ? 'Добавить новые фото в поиск' : 'Пересчитать всё'}</button></div>`; })()}
 <div class="adm-bar"><div class="search">${svg('search')}<input id="aq" class="input" type="search" placeholder="Найти по названию или бренду" value="${esc(st.q)}" autocomplete="off"></div></div>
 <div id="plist">${list.length ? list.map(rowHTML).join('') : '<div class="empty">Ничего не найдено</div>'}</div>`);
   $('#add').addEventListener('click', () => openEditor(null));
-  $('#vis-btn').addEventListener('click', () => indexAll(all.filter(needsIndex).length > 0));
+  $('#vis-btn').addEventListener('click', () => indexAll(searchItems().filter(needsIndex).length > 0));
   $('#aq').addEventListener('input', e => { st.q = e.target.value; const pos = e.target.selectionStart; renderProducts(); const el = $('#aq'); el.focus(); el.setSelectionRange(pos, pos); });
   $('#plist').addEventListener('click', onListClick);
 }
@@ -371,7 +373,7 @@ function renderFormats() {
     });
     card.addEventListener('submit', async e => {
       e.preventDefault();
-      try { await api('formats/' + f.vol, { method: 'PUT', body: { caption: card.caption.value, hint: card.hint.value, image } }); note('Сохранено', `${f.vol} мл`); await load(); }
+      try { await api('formats/' + f.vol, { method: 'PUT', body: { caption: card.caption.value, hint: card.hint.value, image } }); note('Сохранено', `${f.vol} мл`); await load(); const it = formatItems().find(x => x.id === `format-${f.vol}`); if (it && needsIndex(it)) indexProduct(it).catch(() => {}); }
       catch (err) { if (err.message !== 'unauthorized') note('Не сохранено', err.message, 'bad'); }
     });
   });

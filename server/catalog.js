@@ -110,8 +110,9 @@ export function createCatalog(db) {
   };
   catalog.remove = id => { db.prepare('DELETE FROM products WHERE id = ?').run(id); db.prepare('DELETE FROM visual WHERE id = ?').run(id); catalog.refresh(); };
   /** Признаки фото для поиска: только для видимых товаров и только если посчитаны по их текущему фото. */
+  const currentImage = id => (id.startsWith('format-') ? catalog.formats().find(f => `format-${f.vol}` === id)?.image : catalog.byId.get(id)?.image);
   catalog.visualIndex = () => db.prepare('SELECT id, image, vec FROM visual').all()
-    .filter(r => catalog.byId.get(r.id)?.image === r.image).map(r => ({ id: r.id, v: JSON.parse(r.vec) }));
+    .filter(r => currentImage(r.id) === r.image).map(r => ({ id: r.id, v: JSON.parse(r.vec) }));
   catalog.visualStatus = () => Object.fromEntries(db.prepare('SELECT id, image FROM visual').all().map(r => [r.id, r.image]));
   catalog.setVisual = (id, image, vec) => db.prepare(`INSERT INTO visual (id, image, vec, updated_at) VALUES (?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET image = excluded.image, vec = excluded.vec, updated_at = excluded.updated_at`).run(id, image, JSON.stringify(vec), new Date().toISOString());

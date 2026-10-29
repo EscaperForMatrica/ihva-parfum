@@ -27,7 +27,7 @@ async function run(f, products) {
 <div class="ps-res" hidden></div></div></div>`;
   document.body.append(el); document.body.classList.add('lock');
   const close = () => { el.remove(); document.body.classList.remove('lock'); };
-  el.addEventListener('click', e => { if (e.target === el || e.target.closest('[data-close]')) close(); });
+  el.addEventListener('click', e => { if (e.target === el || e.target.closest('[data-close]')) { close(); if (e.target.closest('[data-focus-search]')) $('#q')?.focus(); } });
   addEventListener('keydown', function onKey(e) { if (e.key === 'Escape') { close(); removeEventListener('keydown', onKey); } });
   const status = t => { const s = el.querySelector('.ps-status'); if (s) s.textContent = t; };
   el.querySelector('.ps-q img').src = URL.createObjectURL(f);
@@ -38,6 +38,8 @@ async function run(f, products) {
     const [q, idx] = await Promise.all([features(bmp), loadIndex()]);
     const byId = new Map(products.map(p => [p.id, p]));
     const scored = idx.filter(r => byId.has(r.id)).map(r => ({ p: byId.get(r.id), s: similarity(q, r.v) }));
+    // флаконы разлива (атомайзеры 3–50 мл) одинаковы для всех ароматов — по ним можно понять объём, но не аромат
+    const decant = idx.filter(r => r.id.startsWith('format-')).map(r => ({ vol: Number(r.id.slice(7)), s: similarity(q, r.v) })).sort((a, b) => b.s - a.s)[0];
     if (!scored.length) { status('Поиск по фото пока не настроен — каталог ещё не проиндексирован.'); return; }
     // один аромат часто заведён дважды — разливом и целым флаконом (у них разные фото).
     // Ищем аромат, а показываем все его форматы.
@@ -45,13 +47,15 @@ async function run(f, products) {
     for (const p of products) { const k = perfumeKey(p); if (!groups.has(k)) groups.set(k, { items: [], s: 0 }); groups.get(k).items.push(p); }
     for (const r of scored) { const g = groups.get(perfumeKey(r.p)); g.s = Math.max(g.s, r.s); }
     const top = [...groups.values()].filter(g => g.s > 0).sort((a, b) => b.s - a.s).slice(0, 4);
+    const isDecant = decant && decant.s >= 0.5 && decant.s >= top[0].s;
     const sure = top[0].s >= 0.55;
-    status(sure ? 'Похоже, это:' : 'Точного совпадения нет — вот самые похожие ароматы:');
+    status(isDecant ? `Похоже, это флакон для разлива (ближе всего к ${decant.vol} мл)` : sure ? 'Похоже, это:' : 'Точного совпадения нет — вот самые похожие ароматы:');
     const res = el.querySelector('.ps-res');
     res.hidden = false;
     const fmt = p => (p.variants.some(v => v.vol > 0) ? 'Разлив' : `Флакон ${p.bottleMl} мл`);
     const items = top.flatMap(g => g.items.sort((a, b) => fmt(b).localeCompare(fmt(a))).map(p => ({ p, s: g.s })));
-    res.innerHTML = `<div class="cgrid ps-grid">${items.map(r => `<div class="ps-item"><span class="ps-score">${esc(fmt(r.p))} · ${Math.round(r.s * 100)}%</span>${cardHTML(r.p)}</div>`).join('')}</div>
+    const decantNote = isDecant ? `<div class="ps-decant"><p>Флаконы для разлива у всех ароматов одинаковые, поэтому по фото нельзя понять, какой аромат внутри. Посмотрите ароматы в объёме ${decant.vol} мл или найдите по названию — оно обычно написано на наклейке.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn sm" href="/catalog?vol=${decant.vol}">Ароматы в ${decant.vol} мл</a><a class="btn-ghost sm" href="/catalog?vol=3&vol=5&vol=6&vol=10&vol=30&vol=50">Все ароматы в разлив</a><button type="button" class="btn-ghost sm" data-close data-focus-search>Искать по названию</button></div></div><p class="small" style="margin:0">Если на фото виден и сам аромат, вот похожие:</p>` : '';
+    res.innerHTML = decantNote + `<div class="cgrid ps-grid">${items.map(r => `<div class="ps-item"><span class="ps-score">${esc(fmt(r.p))} · ${Math.round(r.s * 100)}%</span>${cardHTML(r.p)}</div>`).join('')}</div>
 <p class="small ps-help">Не нашли свой аромат? ${site.whatsapp ? `<a href="${esc(waLink('Здравствуйте! Ищу аромат, пришлю фото флакона.'))}" target="_blank" rel="noopener">Отправьте фото менеджеру в WhatsApp</a> — подскажем.` : 'Напишите менеджеру — подскажем.'}</p>`;
     bindCards(res, () => products);
   } catch (err) {

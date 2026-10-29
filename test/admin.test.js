@@ -304,3 +304,12 @@ test('поиск по фото: признаки сохраняются толь
   assert.equal(idx.length, 0);
   assert.equal((await fetch(`${base}/api/admin/visual`)).status, 401);
 });
+
+test('поиск по фото: признаки флаконов разлива (форматы) хранятся как format-<объём>', async () => {
+  await login();
+  const vec = Array.from({ length: 365 }, () => 0.1);
+  assert.equal((await call('visual/format-5', { method: 'PUT', body: { image: '/images/formats/5.jpg', vec } })).status, 200);
+  assert.equal((await call('visual/format-5', { method: 'PUT', body: { image: '/images/formats/3.jpg', vec } })).status, 409);
+  assert.equal((await call('visual/format-7', { method: 'PUT', body: { image: '/images/formats/5.jpg', vec } })).status, 404);
+  assert.ok((await (await fetch(`${base}/api/visual`)).json()).some(r => r.id === 'format-5'));
+});

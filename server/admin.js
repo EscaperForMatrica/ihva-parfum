@@ -109,7 +109,8 @@ export function createAdmin({ config, db, catalog, uploadsDir, send = sendMessag
     const vm = route.match(/^visual\/([a-z0-9-]+)$/);
     if (vm && req.method === 'PUT') {
       const { image, vec } = await json();
-      const p = catalog.all().find(x => x.id === vm[1]);
+      const fmt = vm[1].match(/^format-(\d+)$/);
+      const p = fmt ? (f => f && { id: vm[1], image: f.image })(catalog.formats().find(f => f.vol === Number(fmt[1]))) : catalog.all().find(x => x.id === vm[1]);
       if (!p) return [404, { ok: false, message: 'Товар не найден' }];
       if (!p.image || image !== p.image) return [409, { ok: false, message: 'Фото товара изменилось — пересчитайте' }];
       if (!Array.isArray(vec) || vec.length !== 365 || !vec.every(Number.isFinite)) return [400, { ok: false, message: 'Некорректные признаки' }];
